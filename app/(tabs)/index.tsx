@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, Platform,
@@ -15,7 +16,6 @@ export default function LoginScreen() {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     async function loadMembers() {
@@ -28,11 +28,23 @@ export default function LoginScreen() {
     }
     loadMembers();
   }, []);
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const tryFocus = () => {
+        const input = document.getElementById('pin-input');
+        if (input) {
+          input.focus();
+        } else {
+          setTimeout(tryFocus, 50);
+        }
+      };
+      setTimeout(tryFocus, 100);
+    }
+  }, []);
 
   const checkPin = useCallback((enteredPin) => {
     if (enteredPin === selected?.pin_hash) {
-      setSuccess(true);
-      setError('');
+      router.replace('/home');
     } else {
       setError('Incorrect PIN — try again');
       setPin('');
@@ -64,26 +76,18 @@ export default function LoginScreen() {
     </View>
   );
 
-  if (success) return (
-    <View style={styles.center}>
-      <Text style={styles.successText}>Welcome, {selected.name}! ✅</Text>
-    </View>
-  );
-
   // ── WEB VERSION ─────────────────────────────────────────
   if (Platform.OS === 'web') {
     return (
       <div style={webStyles.page}>
-        <div style={webStyles.card}>
+        <div style={webStyles.card} onClick={() => document.getElementById('pin-input')?.focus()}>
 
-          {/* Logo */}
           <div style={webStyles.logoWrap}>
             <div style={webStyles.logoIcon}>💡</div>
             <div style={webStyles.logoTitle}>LED Pro</div>
             <div style={webStyles.logoSub}>Commercial lighting management</div>
           </div>
 
-          {/* Member picker */}
           <div style={webStyles.sectionLabel}>Who's logging in?</div>
           <div style={webStyles.memberRow}>
             {members.map((m) => (
@@ -111,7 +115,6 @@ export default function LoginScreen() {
             ))}
           </div>
 
-          {/* PIN dots */}
           <div style={webStyles.dotsRow}>
             {[0,1,2,3].map((i) => (
               <div key={i} style={{
@@ -122,23 +125,25 @@ export default function LoginScreen() {
             ))}
           </div>
 
-          {/* Error / hint */}
-          <div style={webStyles.pinHint}>
+          <div
+            style={webStyles.pinHint}
+            onClick={() => document.getElementById('pin-input')?.focus()}
+          >
             {error
               ? <span style={{ color: '#A32D2D' }}>{error}</span>
               : pin.length === 0
-              ? <span style={{ color: '#aaa' }}>Enter your 4-digit PIN</span>
+              ? <span style={{ color: '#aaa' }}>Click here or type your 4-digit PIN</span>
               : <span style={{ color: '#aaa' }}>Keep going...</span>
             }
           </div>
 
-          {/* Hidden keyboard input — catches keyboard + numpad */}
           <input
             id="pin-input"
             type="tel"
             maxLength={4}
             value={pin}
             autoFocus
+            onFocus={() => {}}
             onChange={(e) => {
               const val = e.target.value.replace(/\D/g, '').slice(0, 4);
               setPin(val);
@@ -151,7 +156,6 @@ export default function LoginScreen() {
             style={webStyles.hiddenInput}
           />
 
-          {/* Clickable PIN pad */}
           <div style={webStyles.pinGrid}>
             {['1','2','3','4','5','6','7','8','9'].map((d) => (
               <div
@@ -256,7 +260,6 @@ export default function LoginScreen() {
   );
 }
 
-// ── WEB STYLES (plain JS objects) ───────────────────────────
 const webStyles = {
   page: {
     minHeight: '100vh',
@@ -266,64 +269,41 @@ const webStyles = {
     justifyContent: 'center',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   },
-  card: {
-    background: '#fff',
-    borderRadius: 20,
-    padding: '40px 48px',
-    width: 420,
-    boxShadow: '0 24px 60px rgba(0,0,0,0.25)',
-  },
+  card: { background: '#fff', borderRadius: 20, padding: '40px 48px', width: 420, boxShadow: '0 24px 60px rgba(0,0,0,0.25)' },
   logoWrap: { textAlign: 'center', marginBottom: 32 },
   logoIcon: { fontSize: 40, marginBottom: 10 },
   logoTitle: { fontSize: 24, fontWeight: '600', color: '#1a1a1a', marginBottom: 4 },
   logoSub: { fontSize: 13, color: '#888' },
   sectionLabel: { fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 },
   memberRow: { display: 'flex', gap: 10, marginBottom: 28 },
-  memberChip: {
-    flex: 1, border: '1.5px solid #e0e7ef', borderRadius: 12,
-    padding: '12px 8px', textAlign: 'center', cursor: 'pointer',
-    transition: 'all 0.15s',
-  },
+  memberChip: { flex: 1, border: '1.5px solid #e0e7ef', borderRadius: 12, padding: '12px 8px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.15s' },
   avatar: { width: 40, height: 40, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: '600', margin: '0 auto 8px' },
   memberName: { fontSize: 12, fontWeight: '500' },
   ownerBadge: { fontSize: 10, color: '#185FA5', background: '#E6F1FB', padding: '1px 6px', borderRadius: 20, display: 'inline-block', marginTop: 4 },
   dotsRow: { display: 'flex', justifyContent: 'center', gap: 14, marginBottom: 16 },
   dot: { width: 14, height: 14, borderRadius: 7, border: '1.5px solid #ccc', transition: 'all 0.15s' },
   hiddenInput: {
-    position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none',
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: 1,
+    height: 1,
+    opacity: 0,
+    pointerEvents: 'auto',
+    zIndex: 9999,
   },
-  pinHint: { textAlign: 'center', fontSize: 13, marginBottom: 24, cursor: 'text', minHeight: 20 },
+  pinHint: { textAlign: 'center', fontSize: 13, marginBottom: 16, cursor: 'text', minHeight: 20 },
+  pinGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 24 },
+  pinBtn: { padding: '16px 0', borderRadius: 10, border: '1px solid #e0e7ef', background: '#fff', fontSize: 20, fontWeight: '500', color: '#1a1a1a', textAlign: 'center', cursor: 'pointer', transition: 'background 0.1s', userSelect: 'none' },
+  pinEmpty: { visibility: 'hidden' },
   divider: { borderTop: '1px solid #f0f0f0', marginBottom: 16 },
   footer: { textAlign: 'center', fontSize: 11, color: '#bbb' },
-
-  pinGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: 10,
-    marginBottom: 24,
-  },
-  pinBtn: {
-    padding: '16px 0',
-    borderRadius: 10,
-    border: '1px solid #e0e7ef',
-    background: '#fff',
-    fontSize: 20,
-    fontWeight: '500',
-    color: '#1a1a1a',
-    textAlign: 'center',
-    cursor: 'pointer',
-    transition: 'background 0.1s',
-    userSelect: 'none',
-  },
-  pinEmpty: { visibility: 'hidden' },
 };
 
-// ── MOBILE STYLES ────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgSecondary },
   inner: { flex: 1, paddingHorizontal: 24, paddingTop: 40 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  successText: { fontSize: 22, color: Colors.green, fontWeight: '500' },
   logoWrap: { alignItems: 'center', marginBottom: 32 },
   logoIcon: { width: 64, height: 64, borderRadius: 18, backgroundColor: Colors.blue, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   logoEmoji: { fontSize: 30 },
