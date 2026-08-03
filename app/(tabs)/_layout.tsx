@@ -11,6 +11,7 @@ export default function TabLayout() {
       <Tabs.Screen name="home" />
       <Tabs.Screen name="new-job" />
       <Tabs.Screen name="area-list" />
+      <Tabs.Screen name="area-entry" />
     </Tabs>
   );
 }
