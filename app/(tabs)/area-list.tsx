@@ -1,14 +1,14 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Platform,
-    SafeAreaView, ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Platform,
+  SafeAreaView, ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../supabase';
@@ -41,6 +41,11 @@ export default function AreaListScreen() {
       return () => clearInterval(interval);
     }
   }, [jobId]);
+  useFocusEffect(
+    useCallback(() => {
+      loadAreas();
+    }, [jobId])
+  );
 
   async function loadCurrentUser() {
     const { data } = await supabase
@@ -205,6 +210,12 @@ export default function AreaListScreen() {
                         onClick={() => router.push(`/area-entry?areaId=${area.id}&jobId=${jobId}`)}
                       >
                         Edit →
+                      </button>
+                      <button
+                        style={{...webStyles.editBtn, background: '#FAECE7', color: '#712B13', borderColor: '#D08A6E'}}
+                        onClick={() => router.push(`/electrician?areaId=${area.id}&jobId=${jobId}`)}
+                      >
+                        ⚡ Electrician
                       </button>
                     </div>
                   </div>

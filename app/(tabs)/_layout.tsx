@@ -12,6 +12,8 @@ export default function TabLayout() {
       <Tabs.Screen name="new-job" />
       <Tabs.Screen name="area-list" />
       <Tabs.Screen name="area-entry" />
+      <Tabs.Screen name="layout-canvas" />
+      <Tabs.Screen name="electrician" />
     </Tabs>
   );
 }

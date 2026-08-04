@@ -1,17 +1,17 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView, ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView, ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../supabase';
@@ -416,6 +416,16 @@ export default function AreaEntryScreen() {
                 <div style={{ width: 30 }} />
               </div>
             </>}
+            {job?.col_layout && <>
+              <div style={webStyles.divider} />
+              <div style={webStyles.sectionLabel}>Layout / exhibit</div>
+              <button
+                style={{ ...webStyles.addRowBtn, color: '#534AB7', borderColor: '#534AB7' }}
+                onClick={() => router.push(`/layout-canvas?areaId=${areaId}&jobId=${jobId}&areaName=${area?.name}`)}
+              >
+                🗺 Open ceiling layout canvas
+              </button>
+            </>}
 
             <div style={webStyles.divider} />
 
@@ -589,6 +599,16 @@ export default function AreaEntryScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+        </>}
+        {job?.col_layout && <>
+          <View style={styles.divider} />
+          <Text style={styles.sectionLabel}>Layout / exhibit</Text>
+          <TouchableOpacity
+            style={styles.addRowBtn}
+            onPress={() => router.push(`/layout-canvas?areaId=${areaId}&jobId=${jobId}&areaName=${area?.name}`)}
+          >
+            <Text style={[styles.addRowBtnText, { color: '#534AB7' }]}>🗺 Open ceiling layout canvas</Text>
+          </TouchableOpacity>
         </>}
 
         <View style={styles.divider} />

@@ -1,14 +1,14 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-    ActivityIndicator, Platform,
-    SafeAreaView, ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator, Platform,
+  SafeAreaView, ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../supabase';
@@ -65,9 +65,9 @@ export default function NewJobScreen() {
 
           {/* Header */}
           <div style={webStyles.header}>
-            <button style={webStyles.backBtn} onClick={() => router.back()}>
-              ← Back
-            </button>
+            <button style={webStyles.backBtn} onClick={() => router.push('/home')}>
+            &larr; Back
+          </button>
             <div style={webStyles.headerTitle}>New job</div>
           </div>
 
@@ -183,7 +183,7 @@ export default function NewJobScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.push('/home')}>
             <Text style={styles.backBtn}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>New job</Text>
