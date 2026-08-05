@@ -314,33 +314,53 @@ export default function AreaListScreen() {
 
         {/* Area cards */}
         {getFilteredAreas().map(area => (
-          <TouchableOpacity
+          <View
             key={area.id}
             style={[styles.areaCard, { borderLeftColor: area.is_complete ? Colors.green : Colors.blue }]}
-            onPress={() => router.push(`/area-entry?areaId=${area.id}&jobId=${jobId}`)}
           >
-            <View style={styles.areaTop}>
-              <Text style={styles.areaName}>{area.name}</Text>
+            <TouchableOpacity
+              style={styles.areaCardMain}
+              onPress={() => router.push(`/area-entry?areaId=${area.id}&jobId=${jobId}`)}
+            >
+              <View style={styles.areaTop}>
+                <Text style={styles.areaName}>{area.name}</Text>
+                <TouchableOpacity
+                  style={[styles.checkBtn, area.is_complete && styles.checkBtnDone]}
+                  onPress={() => toggleComplete(area)}
+                >
+                  <Text style={{ color: area.is_complete ? '#fff' : Colors.textTertiary, fontSize: 12 }}>
+                    {area.is_complete ? '✓' : '○'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.areaMeta}>
+                <Text style={styles.areaCount}>{area.light_rows?.length || 0} light rows</Text>
+                {area.entered_by && (
+                  <View style={[styles.nameTag, { backgroundColor: area.entered_by.color + '22' }]}>
+                    <Text style={[styles.nameTagText, { color: area.entered_by.color }]}>
+                      {area.entered_by.initials}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+
+            {/* Action buttons */}
+            <View style={styles.areaActions}>
               <TouchableOpacity
-                style={[styles.checkBtn, area.is_complete && styles.checkBtnDone]}
-                onPress={() => toggleComplete(area)}
+                style={styles.areaActionBtn}
+                onPress={() => router.push(`/area-entry?areaId=${area.id}&jobId=${jobId}`)}
               >
-                <Text style={{ color: area.is_complete ? '#fff' : Colors.textTertiary, fontSize: 12 }}>
-                  {area.is_complete ? '✓' : '○'}
-                </Text>
+                <Text style={styles.areaActionBtnText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.areaActionBtn, styles.areaActionBtnElec]}
+                onPress={() => router.push(`/electrician?areaId=${area.id}&jobId=${jobId}`)}
+              >
+                <Text style={[styles.areaActionBtnText, { color: '#712B13' }]}>⚡ Elec</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.areaMeta}>
-              <Text style={styles.areaCount}>{area.light_rows?.length || 0} light rows</Text>
-              {area.entered_by && (
-                <View style={[styles.nameTag, { backgroundColor: area.entered_by.color + '22' }]}>
-                  <Text style={[styles.nameTagText, { color: area.entered_by.color }]}>
-                    {area.entered_by.initials}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
+          </View>
         ))}
 
         {getFilteredAreas().length === 0 && (
@@ -439,7 +459,7 @@ const styles = StyleSheet.create({
   filterPillActive: { backgroundColor: '#E6F1FB', borderColor: Colors.blue },
   filterPillText: { fontSize: 12, color: Colors.textSecondary },
   filterPillTextActive: { color: '#0C447C' },
-  areaCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 0.5, borderColor: Colors.borderLight, borderLeftWidth: 4, padding: 14, marginBottom: 10 },
+  areaCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 0.5, borderColor: Colors.borderLight, borderLeftWidth: 4, marginBottom: 10, overflow: 'hidden' },
   areaTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   areaName: { fontSize: 14, fontWeight: '500', color: Colors.textPrimary, flex: 1 },
   checkBtn: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, borderColor: Colors.borderLight, alignItems: 'center', justifyContent: 'center' },
@@ -457,4 +477,9 @@ const styles = StyleSheet.create({
   addAreaCancel: { flex: 1, backgroundColor: Colors.bgSecondary, borderRadius: 8, padding: 10, alignItems: 'center', borderWidth: 0.5, borderColor: Colors.borderLight },
   addBtn: { borderWidth: 1, borderColor: '#c0cfe0', borderStyle: 'dashed', borderRadius: 10, padding: 14, alignItems: 'center', marginBottom: 10 },
   addBtnText: { fontSize: 14, color: Colors.blue },
+  areaCardMain: { flex: 1, padding: 14 },
+  areaActions: { flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: Colors.borderLight },
+  areaActionBtn: { flex: 1, padding: 10, alignItems: 'center', borderRightWidth: 0.5, borderRightColor: Colors.borderLight },
+  areaActionBtnElec: { backgroundColor: '#FAECE7' },
+  areaActionBtnText: { fontSize: 12, color: Colors.blue, fontWeight: '500' },
 });

@@ -36,6 +36,14 @@ export default function AreaEntryScreen() {
   const [webSearch, setWebSearch] = useState('');
 
   useEffect(() => {
+    // Reset state when switching areas
+    setCurrentLights([{ qty: '', type: '', hoursOn: false, hoursStart: '06:00', hoursEnd: '18:00' }]);
+    setNewLights([{ qty: '', type: '', hoursOn: false, hoursStart: '06:00', hoursEnd: '18:00' }]);
+    setNotes('');
+    setIsComplete(false);
+    setSensorQty('');
+    setSensorType('');
+    setLoading(true);
     loadAll();
   }, [areaId]);
 
