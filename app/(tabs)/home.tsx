@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator, Platform,
-    SafeAreaView, ScrollView,
-    StyleSheet,
-    Text, TouchableOpacity,
-    View
+  ActivityIndicator, Platform,
+  SafeAreaView, ScrollView,
+  StyleSheet,
+  Text, TouchableOpacity,
+  View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../supabase';
@@ -96,6 +96,12 @@ export default function HomeScreen() {
                 Switch user
               </button>
               <button
+              style={{ ...webStyles.newJobBtn, background: '#f4f7fb', color: Colors.textSecondary, border: '0.5px solid #e0e7ef' }}
+              onClick={() => router.push('/settings')}
+            >
+              ⚙️ Settings
+            </button>
+              <button
                 style={webStyles.newJobBtn}
                 onClick={() => router.push('/new-job')}
               >
@@ -172,12 +178,17 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>Good morning,</Text>
             <Text style={styles.headerTitle}>LED Pro</Text>
           </View>
-          <TouchableOpacity
-            style={styles.switchBtn}
-            onPress={() => router.replace('/')}
-          >
-            <Text style={styles.switchBtnText}>Switch user</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => router.push('/settings')}>
+              <Text style={{ fontSize: 20 }}>⚙️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.switchBtn}
+              onPress={() => router.replace('/')}
+            >
+              <Text style={styles.switchBtnText}>Switch user</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.statRow}>
