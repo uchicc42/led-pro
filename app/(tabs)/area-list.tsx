@@ -1,7 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
+  ActivityIndicator, Alert,
   Platform,
   SafeAreaView, ScrollView,
   StyleSheet,
@@ -11,6 +11,7 @@ import {
   View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { getCurrentUser } from '../../constants/userStore';
 import { supabase } from '../../supabase';
 
 export default function AreaListScreen() {
@@ -21,7 +22,8 @@ export default function AreaListScreen() {
   const [addingArea, setAddingArea] = useState(false);
   const [newAreaName, setNewAreaName] = useState('');
   const [filter, setFilter] = useState('all');
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser_state] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(null); // stores area.id of open menu
 
   useEffect(() => {
     loadJob();
@@ -47,13 +49,9 @@ export default function AreaListScreen() {
     }, [jobId])
   );
 
-  async function loadCurrentUser() {
-    const { data } = await supabase
-      .from('team_members')
-      .select('*')
-      .limit(1)
-      .single();
-    if (data) setCurrentUser(data);
+    async function loadCurrentUser() {
+    const user = await getCurrentUser();
+    if (user) setCurrentUser_state(user);
   }
 
   async function loadJob() {
@@ -81,12 +79,13 @@ export default function AreaListScreen() {
 
   async function addArea() {
     if (!newAreaName.trim()) return;
+    const user = await getCurrentUser();
     const { error } = await supabase
       .from('areas')
       .insert({
         job_id: jobId,
         name: newAreaName.trim(),
-        entered_by: currentUser?.id,
+        entered_by: user?.id,
         is_complete: false,
       });
     if (!error) {
@@ -101,6 +100,16 @@ export default function AreaListScreen() {
       .from('areas')
       .update({ is_complete: !area.is_complete })
       .eq('id', area.id);
+    loadAreas();
+  }
+
+  async function deleteArea(area) {
+    if (Platform.OS === 'web') {
+      if (!window.confirm(`Delete "${area.name}"? This will also remove all light rows entered for this area.`)) return;
+    }
+    // Delete light rows first, then the area
+    await supabase.from('light_rows').delete().eq('area_id', area.id);
+    await supabase.from('areas').delete().eq('id', area.id);
     loadAreas();
   }
 
@@ -217,6 +226,26 @@ export default function AreaListScreen() {
                       >
                         ⚡ Electrician
                       </button>
+                      <div style={{ position: 'relative' }}>
+                        <button
+                          style={{ ...webStyles.editBtn, fontSize: 16, padding: '4px 10px', fontWeight: '700' }}
+                          onClick={() => setMenuOpen(menuOpen === area.id ? null : area.id)}
+                        >
+                          ···
+                        </button>
+                        {menuOpen === area.id && (
+                          <div style={webStyles.dropdownMenu}>
+                            <div
+                              style={webStyles.dropdownItem}
+                              onClick={() => { deleteArea(area); setMenuOpen(null); }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#FCEBEB'}
+                              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                            >
+                              🗑 Delete area
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div style={webStyles.areaMeta}>
@@ -267,7 +296,6 @@ export default function AreaListScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
 
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.push('/home')}>
             <Text style={styles.backBtn}>← Back</Text>
@@ -276,7 +304,6 @@ export default function AreaListScreen() {
           <View style={{ width: 50 }} />
         </View>
 
-        {/* Mode badge */}
         <View style={styles.modeBadgeRow}>
           <View style={[styles.modeBadge, { backgroundColor: job?.mode === 'electrician' ? '#FAECE7' : '#E1F5EE' }]}>
             <Text style={[styles.modeBadgeText, { color: job?.mode === 'electrician' ? '#712B13' : '#085041' }]}>
@@ -288,7 +315,6 @@ export default function AreaListScreen() {
           </Text>
         </View>
 
-        {/* Progress */}
         <View style={styles.progressLabel}>
           <Text style={styles.progressText}>{completed} of {total} areas complete</Text>
           <Text style={styles.progressPct}>{Math.round(progress)}%</Text>
@@ -297,7 +323,6 @@ export default function AreaListScreen() {
           <View style={[styles.progressFill, { width: `${progress}%` }]} />
         </View>
 
-        {/* Filter pills */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
           {['all', 'todo', 'complete', 'mine'].map(f => (
             <TouchableOpacity
@@ -312,7 +337,6 @@ export default function AreaListScreen() {
           ))}
         </ScrollView>
 
-        {/* Area cards */}
         {getFilteredAreas().map(area => (
           <View
             key={area.id}
@@ -345,7 +369,6 @@ export default function AreaListScreen() {
               </View>
             </TouchableOpacity>
 
-            {/* Action buttons */}
             <View style={styles.areaActions}>
               <TouchableOpacity
                 style={styles.areaActionBtn}
@@ -359,6 +382,32 @@ export default function AreaListScreen() {
               >
                 <Text style={[styles.areaActionBtnText, { color: '#712B13' }]}>⚡ Elec</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.areaActionBtn, { borderRightWidth: 0 }]}
+                onPress={() => {
+                  Alert.alert(
+                    area.name,
+                    'What would you like to do?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: '🗑 Delete area',
+                        style: 'destructive',
+                        onPress: () => Alert.alert(
+                          'Delete area',
+                          `Delete "${area.name}"? This will also remove all light rows.`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Delete', style: 'destructive', onPress: () => deleteArea(area) },
+                          ]
+                        )
+                      },
+                    ]
+                  );
+                }}
+              >
+                <Text style={[styles.areaActionBtnText, { color: Colors.textSecondary, fontSize: 16 }]}>···</Text>
+              </TouchableOpacity>
             </View>
           </View>
         ))}
@@ -371,7 +420,6 @@ export default function AreaListScreen() {
           </View>
         )}
 
-        {/* Add area */}
         {addingArea ? (
           <View style={styles.addAreaForm}>
             <TextInput
@@ -436,6 +484,8 @@ const webStyles = {
   addAreaConfirm: { padding: '10px 20px', background: Colors.blue, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, cursor: 'pointer', fontWeight: '500' },
   addAreaCancel: { padding: '10px 16px', background: '#fff', color: Colors.textSecondary, border: '0.5px solid #e0e7ef', borderRadius: 10, fontSize: 14, cursor: 'pointer' },
   addBtn: { width: '100%', padding: '12px', background: 'transparent', border: '1px dashed #c0cfe0', borderRadius: 10, fontSize: 14, color: Colors.blue, cursor: 'pointer', textAlign: 'center' },
+  dropdownMenu: { position: 'absolute', right: 0, top: '110%', background: '#fff', border: '0.5px solid #e0e7ef', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 100, minWidth: 160, overflow: 'hidden' },
+  dropdownItem: { padding: '10px 16px', fontSize: 13, color: '#A32D2D', cursor: 'pointer', background: '#fff' },
 };
 
 const styles = StyleSheet.create({

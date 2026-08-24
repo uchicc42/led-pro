@@ -8,6 +8,7 @@ import {
   View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { setCurrentUser } from '../../constants/userStore';
 import { supabase } from '../../supabase';
 
 export default function LoginScreen() {
@@ -42,8 +43,9 @@ export default function LoginScreen() {
     }
   }, []);
 
-  const checkPin = useCallback((enteredPin) => {
+    const checkPin = useCallback(async (enteredPin) => {
     if (enteredPin === selected?.pin_hash) {
+      await setCurrentUser(selected);
       router.replace('/home');
     } else {
       setError('Incorrect PIN — try again');

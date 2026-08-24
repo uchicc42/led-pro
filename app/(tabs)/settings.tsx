@@ -1,15 +1,15 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    SafeAreaView, ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Platform,
+  SafeAreaView, ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { supabase } from '../../supabase';
@@ -262,10 +262,11 @@ export default function SettingsScreen() {
             <div
               style={{ ...webStyles.sectionHeader, cursor: 'pointer' }}
               onClick={() => {
-                if (window.confirm('Are you sure you want to log out?')) {
-                  router.replace('/');
-                }
-              }}
+              if (window.confirm('Are you sure you want to log out?')) {
+                clearCurrentUser();
+                router.replace('/');
+              }
+            }}
             >
               <div style={webStyles.sectionHeaderLeft}>
                 <div style={webStyles.sectionIcon}>🚪</div>
@@ -404,7 +405,7 @@ export default function SettingsScreen() {
           onPress={() => {
             Alert.alert('Log out', 'Are you sure?', [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Log out', style: 'destructive', onPress: () => router.replace('/') },
+              { text: 'Log out', style: 'destructive', onPress: () => { clearCurrentUser(); router.replace('/'); } },
             ]);
           }}
         >
