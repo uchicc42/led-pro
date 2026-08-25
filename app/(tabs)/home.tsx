@@ -8,11 +8,17 @@ import {
   View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { getCurrentUser } from '../../constants/userStore';
 import { supabase } from '../../supabase';
 
 export default function HomeScreen() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    getCurrentUser().then(user => setCurrentUser(user));
+  }, []);
 
   async function loadJobs() {
     const { data } = await supabase
@@ -29,7 +35,6 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadJobs();
-
     if (Platform.OS !== 'web') {
       const subscription = supabase
         .channel('jobs-channel')
@@ -96,11 +101,11 @@ export default function HomeScreen() {
                 Switch user
               </button>
               <button
-              style={{ ...webStyles.newJobBtn, background: '#f4f7fb', color: Colors.textSecondary, border: '0.5px solid #e0e7ef' }}
-              onClick={() => router.push('/settings')}
-            >
-              ⚙️ Settings
-            </button>
+                style={{ ...webStyles.newJobBtn, background: '#f4f7fb', color: Colors.textSecondary, border: '0.5px solid #e0e7ef' }}
+                onClick={() => router.push('/settings')}
+              >
+                Settings
+              </button>
               <button
                 style={webStyles.newJobBtn}
                 onClick={() => router.push('/new-job')}
@@ -135,7 +140,11 @@ export default function HomeScreen() {
           ) : (
             <div style={webStyles.jobsGrid}>
               {jobs.map((job) => (
-                <div key={job.id} style={webStyles.jobCard} onClick={() => router.push(`/area-list?jobId=${job.id}`)}>
+                <div
+                  key={job.id}
+                  style={webStyles.jobCard}
+                  onClick={() => router.push(`/area-list?jobId=${job.id}&role=${currentUser?.role || ''}`)}
+                >
                   <div style={{ ...webStyles.jobAccent, background: getStatusColor(job) }} />
                   <div style={webStyles.jobCardContent}>
                     <div style={webStyles.jobTop}>
@@ -216,7 +225,11 @@ export default function HomeScreen() {
           </View>
         ) : (
           jobs.map((job) => (
-            <TouchableOpacity key={job.id} style={styles.jobCard} onPress={() => router.push(`/area-list?jobId=${job.id}`)}>
+            <TouchableOpacity
+              key={job.id}
+              style={styles.jobCard}
+              onPress={() => router.push(`/area-list?jobId=${job.id}&role=${currentUser?.role || ''}`)}
+            >
               <View style={[styles.jobAccent, { backgroundColor: getStatusColor(job) }]} />
               <View style={styles.jobContent}>
                 <View style={styles.jobTop}>

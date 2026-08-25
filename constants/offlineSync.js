@@ -45,6 +45,9 @@ export async function syncQueue() {
 
 // Check if device is online
 export async function isOnline() {
+  if (typeof navigator !== 'undefined' && 'onLine' in navigator) {
+    return navigator.onLine;
+  }
   try {
     const response = await fetch('https://www.google.com', { method: 'HEAD' });
     return response.ok;

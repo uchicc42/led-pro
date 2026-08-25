@@ -1,7 +1,8 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert,
+  ActivityIndicator,
+  Alert,
   Platform,
   SafeAreaView, ScrollView,
   StyleSheet,
@@ -15,15 +16,23 @@ import { getCurrentUser } from '../../constants/userStore';
 import { supabase } from '../../supabase';
 
 export default function AreaListScreen() {
-  const { jobId } = useLocalSearchParams();
+  const { jobId, role } = useLocalSearchParams();
   const [job, setJob] = useState(null);
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addingArea, setAddingArea] = useState(false);
   const [newAreaName, setNewAreaName] = useState('');
   const [filter, setFilter] = useState('all');
-  const [currentUser, setCurrentUser_state] = useState(null);
-  const [menuOpen, setMenuOpen] = useState(null); // stores area.id of open menu
+  const [currentUser, setCurrentUser_state] = useState(() => {
+  if (Platform.OS === 'web') {
+    try {
+      const stored = localStorage.getItem('led_pro_current_session');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  }
+  return null;
+});
+  const [menuOpen, setMenuOpen] = useState(null);
 
   useEffect(() => {
     loadJob();
@@ -43,13 +52,22 @@ export default function AreaListScreen() {
       return () => clearInterval(interval);
     }
   }, [jobId]);
+
   useFocusEffect(
     useCallback(() => {
       loadAreas();
     }, [jobId])
   );
 
-    async function loadCurrentUser() {
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const handler = () => setMenuOpen(null);
+      document.addEventListener('click', handler);
+      return () => document.removeEventListener('click', handler);
+    }
+  }, []);
+
+  async function loadCurrentUser() {
     const user = await getCurrentUser();
     if (user) setCurrentUser_state(user);
   }
@@ -104,10 +122,6 @@ export default function AreaListScreen() {
   }
 
   async function deleteArea(area) {
-    if (Platform.OS === 'web') {
-      if (!window.confirm(`Delete "${area.name}"? This will also remove all light rows entered for this area.`)) return;
-    }
-    // Delete light rows first, then the area
     await supabase.from('light_rows').delete().eq('area_id', area.id);
     await supabase.from('areas').delete().eq('id', area.id);
     loadAreas();
@@ -125,6 +139,8 @@ export default function AreaListScreen() {
   const completed = areas.filter(a => a.is_complete).length;
   const total = areas.length;
   const progress = total > 0 ? (completed / total) * 100 : 0;
+  const isElectrician = role === 'electrician' || currentUser?.role === 'electrician';
+  console.log('Current user role:', currentUser?.role, 'isElectrician:', isElectrician);
 
   if (loading) return (
     <View style={styles.center}>
@@ -137,7 +153,6 @@ export default function AreaListScreen() {
       <div style={webStyles.page}>
         <div style={webStyles.container}>
 
-          {/* Header */}
           <div style={webStyles.header}>
             <button style={webStyles.backBtn} onClick={() => router.push('/home')}>
               ← Back
@@ -159,7 +174,6 @@ export default function AreaListScreen() {
             </div>
           </div>
 
-          {/* Progress bar */}
           <div style={webStyles.progressWrap}>
             <div style={webStyles.progressLabel}>
               <span>{completed} of {total} areas complete</span>
@@ -170,7 +184,6 @@ export default function AreaListScreen() {
             </div>
           </div>
 
-          {/* Filter pills */}
           <div style={webStyles.filterRow}>
             {['all', 'todo', 'complete', 'mine'].map(f => (
               <div
@@ -183,7 +196,6 @@ export default function AreaListScreen() {
             ))}
           </div>
 
-          {/* Area list */}
           <div style={webStyles.areaList}>
             {getFilteredAreas().map(area => (
               <div key={area.id} style={{
@@ -226,26 +238,28 @@ export default function AreaListScreen() {
                       >
                         ⚡ Electrician
                       </button>
-                      <div style={{ position: 'relative' }}>
-                        <button
-                          style={{ ...webStyles.editBtn, fontSize: 16, padding: '4px 10px', fontWeight: '700' }}
-                          onClick={() => setMenuOpen(menuOpen === area.id ? null : area.id)}
-                        >
-                          ···
-                        </button>
-                        {menuOpen === area.id && (
-                          <div style={webStyles.dropdownMenu}>
-                            <div
-                              style={webStyles.dropdownItem}
-                              onClick={() => { deleteArea(area); setMenuOpen(null); }}
-                              onMouseEnter={e => e.currentTarget.style.background = '#FCEBEB'}
-                              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                            >
-                              🗑 Delete area
+                      {!isElectrician && (
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            style={{ ...webStyles.editBtn, fontSize: 16, padding: '4px 10px', fontWeight: '700' }}
+                            onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === area.id ? null : area.id); }}
+                          >
+                            ···
+                          </button>
+                          {menuOpen === area.id && (
+                            <div style={webStyles.dropdownMenu} onClick={e => e.stopPropagation()}>
+                              <div
+                                style={webStyles.dropdownItem}
+                                onClick={() => { deleteArea(area); setMenuOpen(null); }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#FCEBEB'}
+                                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                              >
+                                🗑 Delete area
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div style={webStyles.areaMeta}>
@@ -267,8 +281,7 @@ export default function AreaListScreen() {
             )}
           </div>
 
-          {/* Add area */}
-          {addingArea ? (
+          {!isElectrician && (addingArea ? (
             <div style={webStyles.addAreaForm}>
               <input
                 autoFocus
@@ -285,7 +298,7 @@ export default function AreaListScreen() {
             <button style={webStyles.addBtn} onClick={() => setAddingArea(true)}>
               + Add area
             </button>
-          )}
+          ))}
         </div>
       </div>
     );
@@ -382,32 +395,34 @@ export default function AreaListScreen() {
               >
                 <Text style={[styles.areaActionBtnText, { color: '#712B13' }]}>⚡ Elec</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.areaActionBtn, { borderRightWidth: 0 }]}
-                onPress={() => {
-                  Alert.alert(
-                    area.name,
-                    'What would you like to do?',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: '🗑 Delete area',
-                        style: 'destructive',
-                        onPress: () => Alert.alert(
-                          'Delete area',
-                          `Delete "${area.name}"? This will also remove all light rows.`,
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Delete', style: 'destructive', onPress: () => deleteArea(area) },
-                          ]
-                        )
-                      },
-                    ]
-                  );
-                }}
-              >
-                <Text style={[styles.areaActionBtnText, { color: Colors.textSecondary, fontSize: 16 }]}>···</Text>
-              </TouchableOpacity>
+              {!isElectrician && (
+                <TouchableOpacity
+                  style={[styles.areaActionBtn, { borderRightWidth: 0 }]}
+                  onPress={() => {
+                    Alert.alert(
+                      area.name,
+                      'What would you like to do?',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: '🗑 Delete area',
+                          style: 'destructive',
+                          onPress: () => Alert.alert(
+                            'Delete area',
+                            `Delete "${area.name}"? This will also remove all light rows.`,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              { text: 'Delete', style: 'destructive', onPress: () => deleteArea(area) },
+                            ]
+                          )
+                        },
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={[styles.areaActionBtnText, { color: Colors.textSecondary, fontSize: 16 }]}>···</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         ))}
@@ -420,7 +435,7 @@ export default function AreaListScreen() {
           </View>
         )}
 
-        {addingArea ? (
+        {!isElectrician && (addingArea ? (
           <View style={styles.addAreaForm}>
             <TextInput
               style={styles.addAreaInput}
@@ -443,7 +458,7 @@ export default function AreaListScreen() {
           <TouchableOpacity style={styles.addBtn} onPress={() => setAddingArea(true)}>
             <Text style={styles.addBtnText}>+ Add area</Text>
           </TouchableOpacity>
-        )}
+        ))}
 
       </ScrollView>
     </SafeAreaView>
@@ -467,7 +482,7 @@ const webStyles = {
   filterPill: { padding: '5px 14px', borderRadius: 20, border: '0.5px solid #e0e7ef', background: '#fff', fontSize: 12, color: Colors.textSecondary, cursor: 'pointer' },
   filterPillActive: { background: '#E6F1FB', color: '#0C447C', borderColor: Colors.blue },
   areaList: { display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 },
-  areaCard: { background: '#fff', borderRadius: 12, border: '0.5px solid #e0e7ef', borderLeft: `4px solid ${Colors.blue}`, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' },
+  areaCard: { background: '#fff', borderRadius: 12, border: '0.5px solid #e0e7ef', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' },
   areaCardContent: { padding: '14px 18px' },
   areaTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   areaName: { fontSize: 15, fontWeight: '500', color: Colors.textPrimary },
@@ -510,6 +525,7 @@ const styles = StyleSheet.create({
   filterPillText: { fontSize: 12, color: Colors.textSecondary },
   filterPillTextActive: { color: '#0C447C' },
   areaCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 0.5, borderColor: Colors.borderLight, borderLeftWidth: 4, marginBottom: 10, overflow: 'hidden' },
+  areaCardMain: { padding: 14 },
   areaTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   areaName: { fontSize: 14, fontWeight: '500', color: Colors.textPrimary, flex: 1 },
   checkBtn: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, borderColor: Colors.borderLight, alignItems: 'center', justifyContent: 'center' },
@@ -518,6 +534,10 @@ const styles = StyleSheet.create({
   areaCount: { fontSize: 12, color: Colors.textTertiary },
   nameTag: { borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 },
   nameTagText: { fontSize: 11, fontWeight: '600' },
+  areaActions: { flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: Colors.borderLight },
+  areaActionBtn: { flex: 1, padding: 10, alignItems: 'center', borderRightWidth: 0.5, borderRightColor: Colors.borderLight },
+  areaActionBtnElec: { backgroundColor: '#FAECE7' },
+  areaActionBtnText: { fontSize: 12, color: Colors.blue, fontWeight: '500' },
   emptyState: { backgroundColor: '#fff', borderRadius: 12, padding: 32, alignItems: 'center', borderWidth: 0.5, borderColor: Colors.borderLight, borderStyle: 'dashed', marginBottom: 16 },
   emptyText: { color: Colors.textTertiary, fontSize: 14 },
   addAreaForm: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 0.5, borderColor: Colors.borderLight, marginBottom: 10 },
@@ -527,9 +547,4 @@ const styles = StyleSheet.create({
   addAreaCancel: { flex: 1, backgroundColor: Colors.bgSecondary, borderRadius: 8, padding: 10, alignItems: 'center', borderWidth: 0.5, borderColor: Colors.borderLight },
   addBtn: { borderWidth: 1, borderColor: '#c0cfe0', borderStyle: 'dashed', borderRadius: 10, padding: 14, alignItems: 'center', marginBottom: 10 },
   addBtnText: { fontSize: 14, color: Colors.blue },
-  areaCardMain: { flex: 1, padding: 14 },
-  areaActions: { flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: Colors.borderLight },
-  areaActionBtn: { flex: 1, padding: 10, alignItems: 'center', borderRightWidth: 0.5, borderRightColor: Colors.borderLight },
-  areaActionBtnElec: { backgroundColor: '#FAECE7' },
-  areaActionBtnText: { fontSize: 12, color: Colors.blue, fontWeight: '500' },
 });

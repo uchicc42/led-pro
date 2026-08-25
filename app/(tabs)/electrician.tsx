@@ -1,13 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator, Platform,
-    SafeAreaView, ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator, Platform,
+  SafeAreaView, ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { saveInstallData, saveInstallRow, syncQueue } from '../../constants/offlineSync';
@@ -35,11 +35,13 @@ export default function ElectricianScreen() {
 
   async function checkOnline() {
     try {
-      const response = await fetch('https://www.google.com', { method: 'HEAD' });
-      setIsOnlineStatus(response.ok);
-      if (response.ok) {
-        await syncQueue();
+      if (Platform.OS === 'web') {
+        setIsOnlineStatus(navigator.onLine);
+      } else {
+        const response = await fetch('https://www.google.com', { method: 'HEAD' });
+        setIsOnlineStatus(response.ok);
       }
+      if (isOnlineStatus) await syncQueue();
     } catch {
       setIsOnlineStatus(false);
     }
