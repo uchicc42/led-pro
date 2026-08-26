@@ -139,8 +139,9 @@ export default function AreaListScreen() {
   const completed = areas.filter(a => a.is_complete).length;
   const total = areas.length;
   const progress = total > 0 ? (completed / total) * 100 : 0;
-  const isElectrician = role === 'electrician' || currentUser?.role === 'electrician';
-  console.log('Current user role:', currentUser?.role, 'isElectrician:', isElectrician);
+  const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('led_pro_current_session') || '{}') : {};
+  const isElectrician = storedUser?.role === 'electrician';
+  console.log('role from URL:', role, 'currentUser role:', currentUser?.role, 'isElectrician:', isElectrician);
 
   if (loading) return (
     <View style={styles.center}>

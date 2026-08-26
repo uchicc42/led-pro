@@ -14,7 +14,15 @@ import { supabase } from '../../supabase';
 export default function HomeScreen() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('led_pro_current_session');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  }
+  return null;
+});
 
   useEffect(() => {
     getCurrentUser().then(user => setCurrentUser(user));

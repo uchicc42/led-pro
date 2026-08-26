@@ -45,6 +45,9 @@ export default function LoginScreen() {
 
     const checkPin = useCallback(async (enteredPin) => {
     if (enteredPin === selected?.pin_hash) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('led_pro_current_session');
+      }
       await clearCurrentUser();
       await setCurrentUser(selected);
       router.replace(`/home?role=${selected.role}`);
