@@ -12,6 +12,7 @@ import {
   View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { notifyAreaComplete, notifyJobComplete } from '../../constants/notifications';
 import { getCurrentUser } from '../../constants/userStore';
 import { supabase } from '../../supabase';
 
@@ -90,6 +91,13 @@ export default function AreaListScreen() {
     await supabase.from('jobs').update({ job_notes: text }).eq('id', jobId);
     setNotesSaved(true);
     setTimeout(() => setNotesSaved(false), 2000);
+    // Notify after a short delay to avoid spamming on every keystroke
+    clearTimeout(window._notesTimeout);
+    window._notesTimeout = setTimeout(async () => {
+      const user = await getCurrentUser();
+      const { notifyJobNote } = await import('../../constants/notifications');
+      await notifyJobNote(job?.name, user?.id);
+    }, 3000);
   }
 
   async function loadAreas() {
@@ -125,10 +133,28 @@ export default function AreaListScreen() {
   }
 
   async function toggleComplete(area) {
+    const newStatus = !area.is_complete;
     await supabase
       .from('areas')
-      .update({ is_complete: !area.is_complete })
+      .update({ is_complete: newStatus })
       .eq('id', area.id);
+
+    if (newStatus) {
+      const user = await getCurrentUser();
+      await notifyAreaComplete(area.name, job?.name, user?.id);
+
+      // Check if all areas are now complete
+      const { data: allAreas } = await supabase
+        .from('areas')
+        .select('is_complete')
+        .eq('job_id', jobId);
+
+      const allDone = allAreas?.every(a => a.id === area.id ? true : a.is_complete);
+      if (allDone) {
+        await supabase.from('jobs').update({ status: 'complete' }).eq('id', jobId);
+        await notifyJobComplete(job?.name, user?.id);
+      }
+    }
     loadAreas();
   }
 

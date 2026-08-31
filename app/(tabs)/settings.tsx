@@ -6,12 +6,15 @@ import {
   Platform,
   SafeAreaView, ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { registerForPushNotifications } from '../../constants/notifications';
+import { getCurrentUser } from '../../constants/userStore';
 import { supabase } from '../../supabase';
 
 export default function SettingsScreen() {
@@ -23,14 +26,41 @@ export default function SettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [expandLights, setExpandLights] = useState(false);
   const [expandTeam, setExpandTeam] = useState(false);
+  const [currentUser, setCurrentUser_state] = useState(null);
+  const [notifyAreaComplete, setNotifyAreaComplete] = useState(true);
+  const [notifyJobComplete, setNotifyJobComplete] = useState(true);
+  const [notifyJobNotes, setNotifyJobNotes] = useState(true);
+  const [expandNotifications, setExpandNotifications] = useState(false);
 
   useEffect(() => {
     loadAll();
   }, []);
 
   async function loadAll() {
-    await Promise.all([loadLightTypes(), loadTeamMembers()]);
+    await Promise.all([loadLightTypes(), loadTeamMembers(), loadNotificationPrefs()]);
     setLoading(false);
+  }
+
+  async function loadNotificationPrefs() {
+    const user = await getCurrentUser();
+    if (!user) return;
+    setCurrentUser_state(user);
+    const { data } = await supabase
+      .from('team_members')
+      .select('notify_area_complete, notify_job_complete, notify_job_notes')
+      .eq('id', user.id)
+      .single();
+    if (data) {
+      setNotifyAreaComplete(data.notify_area_complete);
+      setNotifyJobComplete(data.notify_job_complete);
+      setNotifyJobNotes(data.notify_job_notes);
+    }
+  }
+
+  async function updateNotificationPref(field, value) {
+    const user = await getCurrentUser();
+    if (!user) return;
+    await supabase.from('team_members').update({ [field]: value }).eq('id', user.id);
   }
 
   async function loadLightTypes() {
@@ -228,6 +258,39 @@ export default function SettingsScreen() {
             )}
           </div>
 
+          {/* NOTIFICATIONS */}
+          <div style={webStyles.section}>
+            <div style={webStyles.sectionHeader}>
+              <div style={webStyles.sectionHeaderLeft}>
+                <div style={webStyles.sectionIcon}>🔔</div>
+                <div>
+                  <div style={webStyles.sectionTitle}>Notifications</div>
+                  <div style={webStyles.sectionSub}>Choose what you get notified about</div>
+                </div>
+              </div>
+            </div>
+            <div style={webStyles.expandPanel}>
+              {[
+                { label: 'Area marked complete', sub: 'When any area is finished', field: 'notify_area_complete', val: notifyAreaComplete, set: setNotifyAreaComplete },
+                { label: 'Job fully complete', sub: 'When all areas in a job are done', field: 'notify_job_complete', val: notifyJobComplete, set: setNotifyJobComplete },
+                { label: 'New job note added', sub: 'When someone adds a note to a job', field: 'notify_job_notes', val: notifyJobNotes, set: setNotifyJobNotes },
+              ].map(pref => (
+                <div key={pref.field} style={webStyles.toggleRow} onClick={() => { pref.set(!pref.val); updateNotificationPref(pref.field, !pref.val); }}>
+                  <div>
+                    <div style={webStyles.toggleLabel}>{pref.label}</div>
+                    <div style={webStyles.toggleSub}>{pref.sub}</div>
+                  </div>
+                  <div style={{ ...webStyles.toggleTrack, background: pref.val ? Colors.blue : '#ccc' }}>
+                    <div style={{ ...webStyles.toggleThumb, transform: pref.val ? 'translateX(16px)' : 'translateX(0)' }} />
+                  </div>
+                </div>
+              ))}
+              <div style={webStyles.comingSoonNote}>
+                📱 Push notifications require the Expo Go app on mobile. Enable once and notifications arrive automatically.
+              </div>
+            </div>
+          </div>
+
           {/* INTEGRATIONS */}
           <div style={webStyles.section}>
             <div style={webStyles.sectionHeader}>
@@ -387,6 +450,48 @@ export default function SettingsScreen() {
             <Text style={styles.comingSoonNote}>
               ℹ️ Adding team members coming in next update
             </Text>
+          </View>
+        )}
+
+        {/* NOTIFICATIONS */}
+        <TouchableOpacity
+          style={styles.sectionRow}
+          onPress={() => setExpandNotifications(!expandNotifications)}
+        >
+          <Text style={styles.sectionIcon}>🔔</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionTitle}>Notifications</Text>
+            <Text style={styles.sectionSub}>Choose what you get notified about</Text>
+          </View>
+          <Text style={styles.chevron}>{expandNotifications ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
+
+        {expandNotifications && (
+          <View style={styles.expandPanel}>
+            {[
+              { label: 'Area marked complete', field: 'notify_area_complete', val: notifyAreaComplete, set: setNotifyAreaComplete },
+              { label: 'Job fully complete', field: 'notify_job_complete', val: notifyJobComplete, set: setNotifyJobComplete },
+              { label: 'New job note', field: 'notify_job_notes', val: notifyJobNotes, set: setNotifyJobNotes },
+            ].map(pref => (
+              <View key={pref.field} style={styles.toggleRow}>
+                <Text style={styles.toggleLabel}>{pref.label}</Text>
+                <Switch
+                  value={pref.val}
+                  onValueChange={v => { pref.set(v); updateNotificationPref(pref.field, v); }}
+                  trackColor={{ false: Colors.borderLight, true: Colors.blue }}
+                  thumbColor="#fff"
+                />
+              </View>
+            ))}
+            <TouchableOpacity
+              style={[styles.addTypeBtn, { marginTop: 12, width: '100%' }]}
+              onPress={async () => {
+                const user = await getCurrentUser();
+                await registerForPushNotifications(user?.id);
+              }}
+            >
+              <Text style={styles.addTypeBtnText}>Enable push notifications</Text>
+            </TouchableOpacity>
           </View>
         )}
 
