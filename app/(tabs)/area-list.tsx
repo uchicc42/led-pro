@@ -24,15 +24,7 @@ export default function AreaListScreen() {
   const [addingArea, setAddingArea] = useState(false);
   const [newAreaName, setNewAreaName] = useState('');
   const [filter, setFilter] = useState('all');
-  const [currentUser, setCurrentUser_state] = useState(() => {
-  if (Platform.OS === 'web') {
-    try {
-      const stored = localStorage.getItem('led_pro_current_session');
-      return stored ? JSON.parse(stored) : null;
-    } catch { return null; }
-  }
-  return null;
-});
+  const [currentUser, setCurrentUser_state] = useState(null);
   const [menuOpen, setMenuOpen] = useState(null);
   const [jobNotes, setJobNotes] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
@@ -68,6 +60,19 @@ export default function AreaListScreen() {
       const handler = () => setMenuOpen(null);
       document.addEventListener('click', handler);
       return () => document.removeEventListener('click', handler);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('led_pro_current_session');
+        if (stored) setCurrentUser_state(JSON.parse(stored));
+      } catch (e) {
+        console.log('Error loading user:', e);
+      }
+    } else {
+      getCurrentUser().then(user => { if (user) setCurrentUser_state(user); });
     }
   }, []);
 
@@ -176,7 +181,7 @@ export default function AreaListScreen() {
   const completed = areas.filter(a => a.is_complete).length;
   const total = areas.length;
   const progress = total > 0 ? (completed / total) * 100 : 0;
-  const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('led_pro_current_session') || '{}') : {};
+  const storedUser = Platform.OS === 'web' && typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('led_pro_current_session') || '{}') : {};
   const isElectrician = storedUser?.role === 'electrician';
   console.log('role from URL:', role, 'currentUser role:', currentUser?.role, 'isElectrician:', isElectrician);
 
@@ -354,6 +359,12 @@ export default function AreaListScreen() {
             >
               📄 Export scope of work
             </button>
+            <button
+              style={{ ...webStyles.addBtn, background: '#fff', color: Colors.textSecondary, border: '0.5px solid #e0e7ef', marginBottom: 10 }}
+              onClick={() => router.push(`/change-log?jobId=${jobId}`)}
+            >
+              🕐 Change log
+            </button>
             <button style={webStyles.addBtn} onClick={() => setAddingArea(true)}>
               + Add area
             </button>
@@ -510,6 +521,13 @@ export default function AreaListScreen() {
             onChangeText={saveJobNotes}
           />
         </View>
+
+        <TouchableOpacity
+          style={[styles.addBtn, { backgroundColor: '#fff', borderStyle: 'solid', marginBottom: 8 }]}
+          onPress={() => router.push(`/change-log?jobId=${jobId}`)}
+        >
+          <Text style={[styles.addBtnText, { color: Colors.textSecondary }]}>🕐 Change log</Text>
+        </TouchableOpacity>
 
         {!isElectrician && (addingArea ? (
           <View style={styles.addAreaForm}>

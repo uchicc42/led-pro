@@ -108,3 +108,19 @@ export async function notifyJobNote(jobName, triggeredByUserId) {
   const tokens = await getNotificationRecipients('notify_job_notes', triggeredByUserId);
   await sendPushNotification(tokens, '📝 New job note', `A note was added to ${jobName}`);
 }
+
+// Log a change to the change_log table
+export async function logChange(areaId, jobId, userId, userName, changeType, description) {
+  try {
+    await supabase.from('change_log').insert({
+      area_id: areaId,
+      job_id: jobId,
+      changed_by: userId,
+      changed_by_name: userName,
+      change_type: changeType,
+      description,
+    });
+  } catch (e) {
+    console.log('Change log error:', e);
+  }
+}

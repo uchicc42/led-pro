@@ -14,6 +14,8 @@ import {
   View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { logChange } from '../../constants/notifications';
+import { getCurrentUser } from '../../constants/userStore';
 import { supabase } from '../../supabase';
 
 const LUMEN_OPTIONS = ['L', 'M', 'H', '3500K', '4000K', '5000K'];
@@ -136,7 +138,18 @@ export default function AreaEntryScreen() {
     }));
 
     await supabase.from('light_rows').insert(dbRows);
-    setSaving(false);
+
+      // Log the change
+      try {
+        const user = await getCurrentUser();
+        await logChange(
+          areaId, jobId, user?.id, user?.name,
+          'area_updated',
+          `${rows.length} light row(s) saved for ${area?.name}`
+        );
+      } catch (e) { console.log('Log error:', e); }
+
+      setSaving(false);
     if (markComplete) setIsComplete(true);
   }
 
