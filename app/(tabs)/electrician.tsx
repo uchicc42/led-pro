@@ -71,7 +71,6 @@ export default function ElectricianScreen() {
       .from('light_rows')
       .select('*')
       .eq('area_id', areaId)
-      .eq('section', 'new')
       .order('sort_order');
     if (rows) setLightRows(rows);
 
@@ -172,14 +171,27 @@ export default function ElectricianScreen() {
 
           {/* Reference panel */}
           <div style={webStyles.refPanel}>
-            <div style={webStyles.refLabel}>Reference — from counting</div>
-            <div style={webStyles.refRow}>
-              <span style={webStyles.refKey}>New lights ordered:</span>
-              <span style={webStyles.refVal}>
-                {lightRows.map(r => `${r.quantity} × ${r.light_type_id || 'Unknown'}`).join(', ') || 'No lights entered yet'}
-              </span>
+              <div style={webStyles.refLabel}>Reference — from counting</div>
+              {lightRows.length === 0 ? (
+                <div style={{ fontSize: 13, color: Colors.textTertiary }}>No lights entered yet in counting mode.</div>
+              ) : (
+                lightRows.map((row, i) => (
+                  <div key={i} style={webStyles.refRow}>
+                    <span style={webStyles.refKey}>
+                      {row.removed_only ? '🗑 Remove:' : row.new_addition ? '➕ Add:' : `${row.quantity} × ${row.light_type_id || '?'} →`}
+                    </span>
+                    <span style={webStyles.refVal}>
+                      {row.removed_only
+                        ? `${row.quantity} × ${row.light_type_id || '?'} (no replacement)`
+                        : row.new_addition
+                        ? `${row.new_quantity} × ${row.new_light_type || '?'}`
+                        : `${row.new_quantity} × ${row.new_light_type || '?'}`
+                      }
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
-          </div>
 
           <div style={webStyles.card}>
 
@@ -197,8 +209,17 @@ export default function ElectricianScreen() {
                   <div key={row.id} style={webStyles.installBlock}>
                     <div style={webStyles.installTop}>
                       <div>
-                        <div style={webStyles.installType}>{row.light_type_id || 'Unknown type'}</div>
-                        <div style={webStyles.installQty}>{row.quantity} units to install</div>
+                        <div style={webStyles.installType}>
+                          {row.new_addition
+                            ? `➕ New: ${row.new_quantity} × ${row.new_light_type || '?'}`
+                            : row.removed_only
+                            ? `🗑 Remove: ${row.quantity} × ${row.light_type_id || '?'}`
+                            : `${row.quantity} × ${row.light_type_id || '?'} → ${row.new_quantity} × ${row.new_light_type || '?'}`
+                          }
+                        </div>
+                        <div style={webStyles.installQty}>
+                          {row.removed_only ? 'Remove only' : `${row.new_quantity || row.quantity} units`}
+                        </div>
                       </div>
                     </div>
 
@@ -375,8 +396,17 @@ export default function ElectricianScreen() {
             const install = getInstallRow(row.id);
             return (
               <View key={row.id} style={styles.installBlock}>
-                <Text style={styles.installType}>{row.light_type_id || 'Unknown type'}</Text>
-                <Text style={styles.installQty}>{row.quantity} units to install</Text>
+                <Text style={styles.installType}>
+                  {row.new_addition
+                    ? `➕ ${row.new_quantity} × ${row.new_light_type || '?'}`
+                    : row.removed_only
+                    ? `🗑 Remove: ${row.quantity} × ${row.light_type_id || '?'}`
+                    : `${row.quantity} × ${row.light_type_id || '?'} → ${row.new_quantity} × ${row.new_light_type || '?'}`
+                  }
+                </Text>
+                <Text style={styles.installQty}>
+                  {row.removed_only ? 'Remove only' : `${row.new_quantity || row.quantity} units`}
+                </Text>
 
                 {/* Status pills */}
                 <View style={styles.statusPills}>

@@ -296,9 +296,17 @@ export default function AreaListScreen() {
               <button style={webStyles.addAreaCancel} onClick={() => { setAddingArea(false); setNewAreaName(''); }}>Cancel</button>
             </div>
           ) : (
+          <>
+            <button
+              style={{ ...webStyles.addBtn, background: Colors.blue, color: '#fff', border: 'none', marginBottom: 10 }}
+              onClick={() => router.push(`/scope-export?jobId=${jobId}`)}
+            >
+              📄 Export scope of work
+            </button>
             <button style={webStyles.addBtn} onClick={() => setAddingArea(true)}>
               + Add area
             </button>
+          </>
           ))}
         </div>
       </div>

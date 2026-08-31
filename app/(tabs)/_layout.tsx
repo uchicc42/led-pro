@@ -15,6 +15,7 @@ export default function TabLayout() {
       <Tabs.Screen name="layout-canvas" />
       <Tabs.Screen name="electrician" />
       <Tabs.Screen name="settings" />
+      <Tabs.Screen name="scope-export" />
     </Tabs>
   );
 }
