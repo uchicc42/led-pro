@@ -33,6 +33,9 @@ export default function AreaListScreen() {
   return null;
 });
   const [menuOpen, setMenuOpen] = useState(null);
+  const [jobNotes, setJobNotes] = useState('');
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
 
   useEffect(() => {
     loadJob();
@@ -78,7 +81,15 @@ export default function AreaListScreen() {
       .select('*')
       .eq('id', jobId)
       .single();
-    if (data) setJob(data);
+    if (data) { setJob(data); setJobNotes(data.job_notes || ''); }
+  }
+
+  async function saveJobNotes(text) {
+    setJobNotes(text);
+    setNotesSaved(false);
+    await supabase.from('jobs').update({ job_notes: text }).eq('id', jobId);
+    setNotesSaved(true);
+    setTimeout(() => setNotesSaved(false), 2000);
   }
 
   async function loadAreas() {
@@ -282,6 +293,20 @@ export default function AreaListScreen() {
             )}
           </div>
 
+          {/* Job notes */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Job notes</span>
+              {notesSaved && <span style={{ color: Colors.green, fontSize: 11 }}>✓ Saved</span>}
+            </div>
+            <textarea
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', fontSize: 13, border: '0.5px solid #e0e7ef', borderRadius: 10, outline: 'none', fontFamily: 'inherit', resize: 'vertical', minHeight: 80 }}
+              placeholder="Add job-wide notes here — visible to all team members..."
+              value={jobNotes}
+              onChange={e => saveJobNotes(e.target.value)}
+            />
+          </div>
+
           {!isElectrician && (addingArea ? (
             <div style={webStyles.addAreaForm}>
               <input
@@ -443,6 +468,22 @@ export default function AreaListScreen() {
             </Text>
           </View>
         )}
+
+        {/* Job notes */}
+        <View style={{ marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={{ fontSize: 11, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1 }}>Job notes</Text>
+            {notesSaved && <Text style={{ fontSize: 11, color: Colors.green }}>✓ Saved</Text>}
+          </View>
+          <TextInput
+            style={{ backgroundColor: '#fff', borderWidth: 0.5, borderColor: Colors.borderLight, borderRadius: 10, padding: 12, fontSize: 13, color: Colors.textPrimary, minHeight: 80 }}
+            multiline
+            placeholder="Add job-wide notes here..."
+            placeholderTextColor={Colors.textTertiary}
+            value={jobNotes}
+            onChangeText={saveJobNotes}
+          />
+        </View>
 
         {!isElectrician && (addingArea ? (
           <View style={styles.addAreaForm}>
