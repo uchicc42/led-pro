@@ -39,7 +39,13 @@ export default function AreaListScreen() {
             <Text style={styles.backBtn}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>{job?.name}</Text>
-          <View style={{ width: 50 }} />
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            onPress={() => router.push(`/job-settings?jobId=${jobId}` as any)}
+            accessibilityLabel="Job settings"
+          >
+            <Text style={{ fontSize: 20 }}>⚙️</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.modeBadgeRow}>
@@ -214,6 +220,7 @@ export default function AreaListScreen() {
 }
 
 const styles = StyleSheet.create({
+  settingsBtn: { width: 50, alignItems: 'flex-end', paddingVertical: 4 },
   container: { flex: 1, backgroundColor: Colors.bgSecondary },
   scroll: { padding: 20, paddingBottom: 80 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },

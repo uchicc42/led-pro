@@ -49,6 +49,7 @@ export function useAreaEntry() {
   const [isComplete, setIsComplete] = useState(false);
   const [lightTypes, setLightTypes] = useState<{ current: string[]; new: string[] }>({ current: [], new: [] });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -112,12 +113,17 @@ export function useAreaEntry() {
 
   async function save(markComplete = false) {
     setSaving(true);
-    await supabase.from('areas').update({
+    setSaveError('');
+    const failed = (message: string) => {
+      setSaveError(message);
+      setSaving(false);
+    };
+
+    const { error: areaError } = await supabase.from('areas').update({
       notes,
       is_complete: markComplete ? true : isComplete,
     }).eq('id', areaId);
-
-    await supabase.from('light_rows').delete().eq('area_id', areaId);
+    if (areaError) return failed('Could not save area. Check your connection and try again.');
 
     const dbRows = rows.map((r, i) => ({
       area_id: areaId,
@@ -135,7 +141,38 @@ export function useAreaEntry() {
       sort_order: i,
     }));
 
-    await supabase.from('light_rows').insert(dbRows);
+    // Update existing rows in place and insert new ones; only then delete rows the user removed.
+    // Nothing is wiped up front, so a failed save can't lose data.
+    const existing = dbRows.flatMap((r, i) => rows[i].id ? [{ ...r, id: rows[i].id }] : []);
+    const added = dbRows.filter((_, i) => !rows[i].id);
+
+    if (existing.length > 0) {
+      const { error } = await supabase.from('light_rows').upsert(existing);
+      if (error) return failed('Could not save light rows. Check your connection and try again.');
+    }
+
+    let insertedIds: (string | undefined)[] = [];
+    if (added.length > 0) {
+      const { data, error } = await supabase.from('light_rows').insert(added).select('id, sort_order');
+      if (error || !data) return failed('Could not save new light rows. Check your connection and try again.');
+      // Map by sort_order so ids line up with the rows they belong to.
+      const idBySort = new Map<number, string>(data.map((d: any) => [d.sort_order, d.id]));
+      insertedIds = dbRows.flatMap((r, i) => rows[i].id ? [] : [idBySort.get(r.sort_order)]);
+    }
+
+    const savedRows = (() => {
+      let next = 0;
+      return rows.map(r => r.id ? r : { ...r, id: insertedIds[next++] ?? null });
+    })();
+    setRows(savedRows);
+
+    const keepIds = savedRows.map(r => r.id).filter(Boolean);
+    const { error: deleteError } = await supabase
+      .from('light_rows')
+      .delete()
+      .eq('area_id', areaId)
+      .not('id', 'in', `(${keepIds.join(',')})`);
+    if (deleteError) return failed('Saved, but removed rows could not be deleted. Try saving again.');
 
     // Log the change
     try {
@@ -172,7 +209,7 @@ export function useAreaEntry() {
   const layoutCanvasHref = `/layout-canvas?areaId=${areaId}&jobId=${jobId}&areaName=${area?.name}`;
 
   return {
-    area, job, rows, notes, setNotes, isComplete, lightTypes, saving, loading,
+    area, job, rows, notes, setNotes, isComplete, lightTypes, saving, saveError, loading,
     save, addRow, removeRow, updateRow,
     backToAreaList, layoutCanvasHref,
   };

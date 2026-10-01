@@ -61,6 +61,11 @@ export default function AreaListScreen() {
               </span>
             </div>
           </div>
+          {!isElectrician && (
+            <button style={webStyles.backBtn} onClick={() => router.push(`/job-settings?jobId=${jobId}` as any)}>
+              ⚙ Job settings
+            </button>
+          )}
         </div>
 
         <div style={webStyles.progressWrap}>

@@ -68,7 +68,7 @@ function WebTypePickerModal({ target, lightTypes, onSelect, onClose }: WebTypePi
 
 export default function AreaEntryScreen() {
   const {
-    area, job, rows, notes, setNotes, isComplete, lightTypes, saving, loading,
+    area, job, rows, notes, setNotes, isComplete, lightTypes, saving, saveError, loading,
     save, addRow, removeRow, updateRow, backToAreaList, layoutCanvasHref,
   } = useAreaEntry();
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
@@ -267,6 +267,8 @@ export default function AreaEntryScreen() {
             onChange={e => setNotes(e.target.value)}
           />
 
+          {saveError && <div style={webStyles.saveError}>{saveError}</div>}
+
           <div style={webStyles.actionRow}>
             <button style={{ ...webStyles.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={() => save(false)} disabled={saving}>
               {saving ? 'Saving...' : 'Save changes'}
@@ -309,6 +311,7 @@ const webStyles: Record<string, CSSProperties> = {
   divider: { borderTop: '0.5px solid #f0f0f0', margin: '20px 0' },
   sectionLabel: { fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 },
   notesInput: { width: '100%', boxSizing: 'border-box', padding: '10px 12px', fontSize: 13, border: '0.5px solid #e0e7ef', borderRadius: 8, outline: 'none', fontFamily: 'inherit', resize: 'vertical', marginTop: 8 },
+  saveError: { color: '#A32D2D', fontSize: 13, marginTop: 16 },
   actionRow: { display: 'flex', gap: 10, marginTop: 20 },
   saveBtn: { flex: 1, padding: '13px', background: Colors.blue, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: '500', cursor: 'pointer' },
   doneBtn: { flex: 1, padding: '13px', background: '#fff', color: Colors.teal, border: `1px solid ${Colors.green}`, borderRadius: 10, fontSize: 14, cursor: 'pointer' },

@@ -45,6 +45,7 @@ export function getIcon(changeType: string) {
     case 'area_complete': return '✅';
     case 'job_complete': return '🎉';
     case 'job_note': return '📝';
+    case 'job_settings': return '⚙️';
     default: return '📋';
   }
 }

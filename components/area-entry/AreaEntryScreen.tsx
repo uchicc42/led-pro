@@ -91,7 +91,7 @@ function TypePickerModal({ visible, target, lightTypes, onSelect, onClose }: Typ
 
 export default function AreaEntryScreen() {
   const {
-    area, job, rows, notes, setNotes, isComplete, lightTypes, saving, loading,
+    area, job, rows, notes, setNotes, isComplete, lightTypes, saving, saveError, loading,
     save, addRow, removeRow, updateRow, backToAreaList, layoutCanvasHref,
   } = useAreaEntry();
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -262,6 +262,8 @@ export default function AreaEntryScreen() {
           onChangeText={setNotes}
         />
 
+        {!!saveError && <Text style={styles.saveError}>{saveError}</Text>}
+
         <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={() => save(false)} disabled={saving}>
           {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save changes</Text>}
         </TouchableOpacity>
@@ -312,6 +314,7 @@ const styles = StyleSheet.create({
   divider: { height: 0.5, backgroundColor: Colors.borderLight, marginVertical: 16 },
   notesInput: { backgroundColor: '#fff', borderWidth: 0.5, borderColor: Colors.borderLight, borderRadius: 10, padding: 12, fontSize: 13, color: Colors.textPrimary, minHeight: 80, marginTop: 8 },
   saveBtn: { backgroundColor: Colors.blue, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16 },
+  saveError: { color: '#A32D2D', fontSize: 13, marginTop: 16, textAlign: 'center' },
   saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '500' },
   doneBtn: { borderWidth: 0.5, borderColor: Colors.green, borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8, backgroundColor: '#fff' },
   doneBtnActive: { backgroundColor: '#E1F5EE' },
