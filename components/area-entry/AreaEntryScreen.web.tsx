@@ -2,20 +2,19 @@ import { router } from 'expo-router';
 import { useState, type CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
-import { AreaEntryState, LUMEN_OPTIONS, PickerTarget, useAreaEntry } from './useAreaEntry';
+import { CONTROL_LABEL, ControlKind, LUMEN_OPTIONS, PickerTarget, useAreaEntry } from './useAreaEntry';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses AreaEntryScreen.tsx.
 
 type WebTypePickerModalProps = {
-  target: PickerTarget;
-  lightTypes: AreaEntryState['lightTypes'];
+  title: string;
+  options: string[];
   onSelect: (item: string) => void;
   onClose: () => void;
 };
 
-function WebTypePickerModal({ target, lightTypes, onSelect, onClose }: WebTypePickerModalProps) {
+function WebTypePickerModal({ title, options, onSelect, onClose }: WebTypePickerModalProps) {
   const [search, setSearch] = useState('');
-  const options = target.field === 'oldType' ? lightTypes.current : lightTypes.new;
   const filtered = options.filter(t => t.toLowerCase().includes(search.toLowerCase()));
 
   function pick(item: string) {
@@ -27,9 +26,7 @@ function WebTypePickerModal({ target, lightTypes, onSelect, onClose }: WebTypePi
     <div style={webStyles.modalOverlay} onClick={onClose}>
       <div style={webStyles.modalCard} onClick={e => e.stopPropagation()}>
         <div style={webStyles.modalHeader}>
-          <div style={webStyles.modalTitle}>
-            {target.field === 'oldType' ? 'Current light type' : 'New light type'}
-          </div>
+          <div style={webStyles.modalTitle}>{title}</div>
           <button style={webStyles.modalClose} onClick={onClose}>✕</button>
         </div>
         <div style={webStyles.modalSearchWrap}>
@@ -66,12 +63,45 @@ function WebTypePickerModal({ target, lightTypes, onSelect, onClose }: WebTypePi
   );
 }
 
+// Qty + type entry for one sensor/photocell line; used per light row and for area-wide controls.
+function ControlLine({ kind, qty, type, onQty, onPickType, onRemove }: {
+  kind: ControlKind;
+  qty: string;
+  type: string;
+  onQty: (v: string) => void;
+  onPickType: () => void;
+  onRemove?: () => void;
+}) {
+  return (
+    <div style={webStyles.controlLine}>
+      <span style={webStyles.controlLabel}>{CONTROL_LABEL[kind]}</span>
+      <input
+        style={{ ...webStyles.qtyInput, width: 56 }}
+        type="number" min="0"
+        value={qty}
+        onChange={e => onQty(e.target.value)}
+        placeholder="0"
+      />
+      <div
+        style={{ ...webStyles.typeBtn, flex: 1, color: type ? Colors.textPrimary : '#aaa' }}
+        onClick={onPickType}
+      >
+        {type || 'Select type...'}
+      </div>
+      {onRemove && <div style={webStyles.delBtn} onClick={onRemove} title={`Remove ${CONTROL_LABEL[kind]}`}>✕</div>}
+    </div>
+  );
+}
+
 export default function AreaEntryScreen() {
   const {
-    area, job, rows, notes, setNotes, isComplete, lightTypes, saving, saveError, loading,
-    save, addRow, removeRow, updateRow, backToAreaList, layoutCanvasHref,
+    area, job, rows, notes, setNotes, isComplete, saving, saveError, loading,
+    save, addRow, removeRow, updateRow, updateRowControl,
+    enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
+    describePicker, backToAreaList, layoutCanvasHref,
   } = useAreaEntry();
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
+  const picker = pickerTarget ? describePicker(pickerTarget) : null;
 
   if (loading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -81,11 +111,11 @@ export default function AreaEntryScreen() {
 
   return (
     <div style={webStyles.page}>
-      {pickerTarget && (
+      {picker && (
         <WebTypePickerModal
-          target={pickerTarget}
-          lightTypes={lightTypes}
-          onSelect={item => updateRow(pickerTarget.rowIndex, pickerTarget.field, item)}
+          title={picker.title}
+          options={picker.options}
+          onSelect={picker.select}
           onClose={() => setPickerTarget(null)}
         />
       )}
@@ -108,7 +138,6 @@ export default function AreaEntryScreen() {
             <div style={{ ...webStyles.colHeader, width: 60 }}>New qty</div>
             <div style={{ ...webStyles.colHeader, flex: 1 }}>New light type</div>
             {job?.col_hours && <div style={{ ...webStyles.colHeader, width: 36 }}>⏱</div>}
-            {job?.col_sensor && <div style={{ ...webStyles.colHeader, width: 60 }}>Sensor</div>}
             <div style={{ ...webStyles.colHeader, width: 80 }}>Lumen</div>
             <div style={{ width: 28 }}></div>
           </div>
@@ -137,7 +166,7 @@ export default function AreaEntryScreen() {
                   }}
                   onClick={() => {
                     if (row.newAddition) return;
-                    setPickerTarget({ rowIndex: i, field: 'oldType' });
+                    setPickerTarget({ scope: 'row', rowIndex: i, field: 'oldType' });
                   }}
                 >
                   {row.oldType || 'Select...'}
@@ -166,7 +195,7 @@ export default function AreaEntryScreen() {
                   }}
                   onClick={() => {
                     if (row.removedOnly) return;
-                    setPickerTarget({ rowIndex: i, field: 'newType' });
+                    setPickerTarget({ scope: 'row', rowIndex: i, field: 'newType' });
                   }}
                 >
                   {row.newType || 'Select...'}
@@ -179,18 +208,6 @@ export default function AreaEntryScreen() {
                     onClick={() => updateRow(i, 'hoursOn', !row.hoursOn)}
                     title="Set operating hours"
                   >⏱</div>
-                )}
-
-                {/* Sensor qty */}
-                {job?.col_sensor && (
-                  <input
-                    style={{ ...webStyles.qtyInput, width: 60 }}
-                    type="number" min="0"
-                    value={row.sensorQty}
-                    onChange={e => updateRow(i, 'sensorQty', e.target.value)}
-                    placeholder="0"
-                    title="Sensor qty"
-                  />
                 )}
 
                 {/* Lumen setting */}
@@ -219,6 +236,22 @@ export default function AreaEntryScreen() {
                 </div>
               )}
 
+              {/* Sensors / photocells on this row */}
+              {enabledKinds.length > 0 && (
+                <div style={webStyles.rowControls}>
+                  {enabledKinds.map(kind => (
+                    <ControlLine
+                      key={kind}
+                      kind={kind}
+                      qty={row.controls[kind].qty}
+                      type={row.controls[kind].type}
+                      onQty={v => updateRowControl(i, kind, 'qty', v)}
+                      onPickType={() => setPickerTarget({ scope: 'rowControl', rowIndex: i, kind })}
+                    />
+                  ))}
+                </div>
+              )}
+
               {/* Flags row */}
               <div style={webStyles.flagsRow}>
                 <label style={webStyles.flagLabel}>
@@ -242,6 +275,34 @@ export default function AreaEntryScreen() {
           ))}
 
           <button style={webStyles.addRowBtn} onClick={addRow}>+ Add light row</button>
+
+          {enabledKinds.length > 0 && (
+            <>
+              <div style={webStyles.divider} />
+              <div style={webStyles.sectionLabel}>Area sensors & photocells</div>
+              <div style={webStyles.areaControlsHint}>For controls that cover the whole area, not one light row.</div>
+              <div style={{ ...webStyles.rowControls, paddingLeft: 0 }}>
+                {visibleAreaControls.map(c => (
+                  <ControlLine
+                    key={c.key}
+                    kind={c.kind}
+                    qty={c.qty}
+                    type={c.type}
+                    onQty={v => updateAreaControl(c.key, 'qty', v)}
+                    onPickType={() => setPickerTarget({ scope: 'areaControl', key: c.key, kind: c.kind })}
+                    onRemove={() => removeAreaControl(c.key)}
+                  />
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                {enabledKinds.map(kind => (
+                  <button key={kind} style={webStyles.addRowBtn} onClick={() => addAreaControl(kind)}>
+                    + Add {CONTROL_LABEL[kind].toLowerCase()}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           <div style={webStyles.divider} />
 
@@ -311,6 +372,10 @@ const webStyles: Record<string, CSSProperties> = {
   divider: { borderTop: '0.5px solid #f0f0f0', margin: '20px 0' },
   sectionLabel: { fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 },
   notesInput: { width: '100%', boxSizing: 'border-box', padding: '10px 12px', fontSize: 13, border: '0.5px solid #e0e7ef', borderRadius: 8, outline: 'none', fontFamily: 'inherit', resize: 'vertical', marginTop: 8 },
+  rowControls: { display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 0 4px 68px' },
+  controlLine: { display: 'flex', alignItems: 'center', gap: 8 },
+  controlLabel: { width: 70, fontSize: 11, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  areaControlsHint: { fontSize: 12, color: Colors.textTertiary, marginBottom: 4 },
   saveError: { color: '#A32D2D', fontSize: 13, marginTop: 16 },
   actionRow: { display: 'flex', gap: 10, marginTop: 20 },
   saveBtn: { flex: 1, padding: '13px', background: Colors.blue, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: '500', cursor: 'pointer' },

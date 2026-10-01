@@ -15,21 +15,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
-import { AreaEntryState, PickerTarget, useAreaEntry } from './useAreaEntry';
+import { AreaControl, CONTROL_LABEL, ControlKind, PickerTarget, useAreaEntry } from './useAreaEntry';
 
 // Native (iOS/Android) UI. The web UI lives in AreaEntryScreen.web.tsx; Metro picks the right file per platform.
 
 type TypePickerModalProps = {
   visible: boolean;
-  target: PickerTarget;
-  lightTypes: AreaEntryState['lightTypes'];
+  title: string;
+  options: string[];
   onSelect: (item: string) => void;
   onClose: () => void;
 };
 
-function TypePickerModal({ visible, target, lightTypes, onSelect, onClose }: TypePickerModalProps) {
+function TypePickerModal({ visible, title, options, onSelect, onClose }: TypePickerModalProps) {
   const [search, setSearch] = useState('');
-  const options = target.field === 'oldType' ? lightTypes.current : lightTypes.new;
   const filtered = options.filter(t => t.toLowerCase().includes(search.toLowerCase()));
 
   function close() {
@@ -44,9 +43,7 @@ function TypePickerModal({ visible, target, lightTypes, onSelect, onClose }: Typ
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'position' : 'height'}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {target.field === 'oldType' ? 'Current light type' : 'New light type'}
-              </Text>
+              <Text style={styles.modalTitle}>{title}</Text>
               <TouchableOpacity onPress={close}>
                 <Text style={styles.modalClose}>Done</Text>
               </TouchableOpacity>
@@ -89,13 +86,49 @@ function TypePickerModal({ visible, target, lightTypes, onSelect, onClose }: Typ
   );
 }
 
+// Qty + type entry for one sensor/photocell line; used per light row and for area-wide controls.
+function ControlLine({ kind, qty, type, onQty, onPickType, onRemove }: {
+  kind: ControlKind;
+  qty: string;
+  type: string;
+  onQty: (v: string) => void;
+  onPickType: () => void;
+  onRemove?: () => void;
+}) {
+  return (
+    <View style={styles.controlLine}>
+      <Text style={styles.controlLabel}>{CONTROL_LABEL[kind]}</Text>
+      <TextInput
+        style={styles.controlQty}
+        keyboardType="number-pad"
+        value={qty}
+        onChangeText={onQty}
+        placeholder="0"
+        placeholderTextColor={Colors.textTertiary}
+      />
+      <TouchableOpacity style={styles.controlTypeBtn} onPress={onPickType}>
+        <Text style={[styles.typeText, !!type && { color: Colors.textPrimary }]} numberOfLines={1}>
+          {type || 'Select type...'}
+        </Text>
+      </TouchableOpacity>
+      {onRemove && (
+        <TouchableOpacity style={styles.controlRemove} onPress={onRemove} accessibilityLabel={`Remove ${CONTROL_LABEL[kind]}`}>
+          <Text style={styles.controlRemoveText}>✕</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 export default function AreaEntryScreen() {
   const {
-    area, job, rows, notes, setNotes, isComplete, lightTypes, saving, saveError, loading,
-    save, addRow, removeRow, updateRow, backToAreaList, layoutCanvasHref,
+    area, job, rows, notes, setNotes, isComplete, saving, saveError, loading,
+    save, addRow, removeRow, updateRow, updateRowControl,
+    enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
+    describePicker, backToAreaList, layoutCanvasHref,
   } = useAreaEntry();
-  const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickerTarget, setPickerTarget] = useState<PickerTarget>({ rowIndex: 0, field: 'oldType' });
+  const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
+  const picker = pickerTarget ? describePicker(pickerTarget) : null;
 
   if (loading) return (
     <View style={styles.center}>
@@ -106,11 +139,11 @@ export default function AreaEntryScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <TypePickerModal
-        visible={pickerVisible}
-        target={pickerTarget}
-        lightTypes={lightTypes}
-        onSelect={item => updateRow(pickerTarget.rowIndex, pickerTarget.field, item)}
-        onClose={() => setPickerVisible(false)}
+        visible={!!picker}
+        title={picker?.title ?? ''}
+        options={picker?.options ?? []}
+        onSelect={item => picker?.select(item)}
+        onClose={() => setPickerTarget(null)}
       />
       <ScrollView contentContainerStyle={styles.scroll}>
 
@@ -141,7 +174,7 @@ export default function AreaEntryScreen() {
                   />
                   <TouchableOpacity
                     style={styles.typePickerWrap}
-                    onPress={() => { setPickerTarget({ rowIndex: i, field: 'oldType' }); setPickerVisible(true); }}
+                    onPress={() => setPickerTarget({ scope: 'row', rowIndex: i, field: 'oldType' })}
                   >
                     <Text style={[styles.typeText, !!row.oldType && { color: Colors.textPrimary }]} numberOfLines={1}>
                       {row.oldType || 'Select type...'}
@@ -178,13 +211,29 @@ export default function AreaEntryScreen() {
                   />
                   <TouchableOpacity
                     style={styles.typePickerWrap}
-                    onPress={() => { setPickerTarget({ rowIndex: i, field: 'newType' }); setPickerVisible(true); }}
+                    onPress={() => setPickerTarget({ scope: 'row', rowIndex: i, field: 'newType' })}
                   >
                     <Text style={[styles.typeText, !!row.newType && { color: Colors.textPrimary }]} numberOfLines={1}>
                       {row.newType || 'Select type...'}
                     </Text>
                   </TouchableOpacity>
                 </View>
+              </View>
+            )}
+
+            {/* Sensors / photocells on this row */}
+            {enabledKinds.length > 0 && (
+              <View style={styles.rowControls}>
+                {enabledKinds.map(kind => (
+                  <ControlLine
+                    key={kind}
+                    kind={kind}
+                    qty={row.controls[kind].qty}
+                    type={row.controls[kind].type}
+                    onQty={v => updateRowControl(i, kind, 'qty', v)}
+                    onPickType={() => setPickerTarget({ scope: 'rowControl', rowIndex: i, kind })}
+                  />
+                ))}
               </View>
             )}
 
@@ -240,6 +289,31 @@ export default function AreaEntryScreen() {
           <Text style={styles.addRowBtnText}>+ Add light row</Text>
         </TouchableOpacity>
 
+        {enabledKinds.length > 0 && (
+          <View style={styles.areaControlsBlock}>
+            <Text style={styles.sectionLabel}>Area sensors & photocells</Text>
+            <Text style={styles.areaControlsHint}>For controls that cover the whole area, not one light row.</Text>
+            {visibleAreaControls.map((c: AreaControl) => (
+              <ControlLine
+                key={c.key}
+                kind={c.kind}
+                qty={c.qty}
+                type={c.type}
+                onQty={v => updateAreaControl(c.key, 'qty', v)}
+                onPickType={() => setPickerTarget({ scope: 'areaControl', key: c.key, kind: c.kind })}
+                onRemove={() => removeAreaControl(c.key)}
+              />
+            ))}
+            <View style={styles.areaControlsAddRow}>
+              {enabledKinds.map(kind => (
+                <TouchableOpacity key={kind} style={styles.areaControlsAddBtn} onPress={() => addAreaControl(kind)}>
+                  <Text style={styles.addRowBtnText}>+ Add {CONTROL_LABEL[kind].toLowerCase()}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
         {job?.col_layout && (
           <TouchableOpacity
             style={styles.layoutBtn}
@@ -280,6 +354,17 @@ export default function AreaEntryScreen() {
 }
 
 const styles = StyleSheet.create({
+  rowControls: { marginTop: 8, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: Colors.borderLight, gap: 6 },
+  controlLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  controlLabel: { width: 64, fontSize: 11, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  controlQty: { width: 52, minHeight: 40, borderWidth: 0.5, borderColor: Colors.borderLight, borderRadius: 8, padding: 8, fontSize: 13, color: Colors.textPrimary, textAlign: 'center', backgroundColor: Colors.bgSecondary },
+  controlTypeBtn: { flex: 1, minHeight: 40, borderWidth: 0.5, borderColor: Colors.borderLight, borderRadius: 8, paddingHorizontal: 10, backgroundColor: Colors.bgSecondary, justifyContent: 'center' },
+  controlRemove: { width: 36, height: 40, alignItems: 'center', justifyContent: 'center' },
+  controlRemoveText: { fontSize: 14, color: '#A32D2D' },
+  areaControlsBlock: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 0.5, borderColor: Colors.borderLight, padding: 14, marginBottom: 10, gap: 8 },
+  areaControlsHint: { fontSize: 11, color: Colors.textTertiary, marginTop: -4 },
+  areaControlsAddRow: { flexDirection: 'row', gap: 8 },
+  areaControlsAddBtn: { flex: 1, borderWidth: 1, borderColor: '#c0cfe0', borderStyle: 'dashed', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
   container: { flex: 1, backgroundColor: Colors.bgSecondary },
   scroll: { padding: 20, paddingBottom: 80 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },

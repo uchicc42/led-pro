@@ -2,12 +2,12 @@ import { router } from 'expo-router';
 import { useState, type CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
-import { generateHTML, useScopeExport } from './useScopeExport';
+import { areaControlsText, generateHTML, rowControlsText, sortedRows, useScopeExport } from './useScopeExport';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses ScopeExportScreen.tsx.
 
 export default function ScopeExportScreen() {
-  const { jobId, job, areas, loading, totalOld, totalNew } = useScopeExport();
+  const { jobId, job, areas, loading, kinds, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
   const [generating, setGenerating] = useState(false);
 
   function exportPDF() {
@@ -53,6 +53,18 @@ export default function ScopeExportScreen() {
             <div style={webStyles.statVal}>{areas.length}</div>
             <div style={webStyles.statLabel}>Areas</div>
           </div>
+          {kinds.includes('occupancy') && (
+            <div style={webStyles.statCard}>
+              <div style={webStyles.statVal}>{totalSensors}</div>
+              <div style={webStyles.statLabel}>Occupancy sensors</div>
+            </div>
+          )}
+          {kinds.includes('photocell') && (
+            <div style={webStyles.statCard}>
+              <div style={webStyles.statVal}>{totalPhotocells}</div>
+              <div style={webStyles.statLabel}>Photocells</div>
+            </div>
+          )}
         </div>
 
         {/* Preview table */}
@@ -63,31 +75,43 @@ export default function ScopeExportScreen() {
           <table style={webStyles.table}>
             <thead>
               <tr>
-                {['Area', 'Old qty', 'Current type', 'New qty', 'New type', 'Lumen', 'Hours', 'Notes'].map(h => (
+                {['Area', 'Old qty', 'Current type', 'New qty', 'New type', 'Lumen', 'Hours',
+                  ...(kinds.length > 0 ? ['Sensors / photocells'] : []), 'Notes'].map(h => (
                   <th key={h} style={webStyles.th}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {areas.map(area => {
-                const rows: any[] = area.light_rows || [];
-                if (rows.length === 0) return null;
-                return rows.map((row, i) => (
+                const rows = sortedRows(area);
+                const areaWide = areaControlsText(area, kinds);
+                if (rows.length === 0 && !areaWide) return null;
+                const span = rows.length + (areaWide ? 1 : 0);
+                const areaCell = <td rowSpan={span} style={webStyles.tdArea}>{area.name}</td>;
+                const columnCount = kinds.length > 0 ? 9 : 8;
+                return [
+                  ...rows.map((row, i) => (
                   <tr key={`${area.id}-${i}`} style={{ background: i % 2 === 0 ? '#f9fbff' : '#fff' }}>
-                    {i === 0 && (
-                      <td rowSpan={rows.length} style={webStyles.tdArea}>{area.name}</td>
-                    )}
+                    {i === 0 && areaCell}
                     <td style={webStyles.tdQty}>{row.new_addition ? '—' : row.quantity || 0}</td>
                     <td style={webStyles.td}>{row.new_addition ? '(new addition)' : row.light_type_id || '—'}</td>
                     <td style={webStyles.tdQty}>{row.removed_only ? '—' : row.new_quantity || 0}</td>
                     <td style={webStyles.td}>{row.removed_only ? '(removed only)' : row.new_light_type || '—'}</td>
                     <td style={webStyles.tdCenter}>{row.lumen_setting || '—'}</td>
                     <td style={webStyles.tdCenter}>{row.hours_flagged ? `${row.hours_start || ''} – ${row.hours_end || ''}` : '—'}</td>
+                    {kinds.length > 0 && <td style={{ ...webStyles.td, fontSize: 12 }}>{rowControlsText(area, row.id, kinds) || '—'}</td>}
                     <td style={{ ...webStyles.td, fontSize: 11, color: '#854F0B' }}>
                       {row.removed_only ? '🗑 Remove only' : row.new_addition ? '➕ New addition' : ''}
                     </td>
                   </tr>
-                ));
+                  )),
+                  areaWide ? (
+                    <tr key={`${area.id}-area`}>
+                      {rows.length === 0 && areaCell}
+                      <td colSpan={columnCount - 1} style={webStyles.tdAreaWide}>Area-wide: {areaWide}</td>
+                    </tr>
+                  ) : null,
+                ];
               })}
             </tbody>
           </table>
@@ -107,6 +131,7 @@ export default function ScopeExportScreen() {
 }
 
 const webStyles: Record<string, CSSProperties> = {
+  tdAreaWide: { padding: '7px 10px', borderBottom: '0.5px solid #e0e7ef', background: '#EEF6F1', color: '#085041', fontSize: 12 },
   page: { minHeight: '100vh', background: Colors.bgSecondary, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', overflowY: 'auto' },
   container: { maxWidth: 1000, margin: '0 auto', padding: '40px 32px 80px' },
   header: { display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 },

@@ -30,6 +30,8 @@ export async function syncQueue() {
           await supabase.from('install_rows').upsert(action.data);
         } else if (action.type === 'update_area') {
           await supabase.from('areas').update(action.data).eq('id', action.id);
+        } else if (action.type === 'update_control') {
+          await supabase.from('area_controls').update(action.data).eq('id', action.id);
         }
       } catch (e) {
         failed.push(action);
@@ -74,5 +76,17 @@ export async function saveInstallRow(rowData) {
     await syncQueue();
   } else {
     await queueAction({ type: 'upsert_install_row', data: rowData });
+  }
+}
+
+// Save a sensor/photocell install status — online goes direct, offline goes to queue
+export async function saveControlStatus(controlId, installStatus) {
+  const data = { install_status: installStatus };
+  const online = await isOnline();
+  if (online) {
+    await supabase.from('area_controls').update(data).eq('id', controlId);
+    await syncQueue();
+  } else {
+    await queueAction({ type: 'update_control', id: controlId, data });
   }
 }

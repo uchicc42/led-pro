@@ -16,13 +16,17 @@ export function useSettings() {
   const [notifyJobComplete, setNotifyJobComplete] = useState(true);
   const [notifyJobNotes, setNotifyJobNotes] = useState(true);
   const [expandNotifications, setExpandNotifications] = useState(false);
+  const [controlTypes, setControlTypes] = useState<any[]>([]);
+  const [expandControls, setExpandControls] = useState(false);
+  const [newControlName, setNewControlName] = useState('');
+  const [newControlKind, setNewControlKind] = useState<'occupancy' | 'photocell'>('occupancy');
 
   useEffect(() => {
     loadAll();
   }, []);
 
   async function loadAll() {
-    await Promise.all([loadLightTypes(), loadTeamMembers(), loadNotificationPrefs()]);
+    await Promise.all([loadLightTypes(), loadControlTypes(), loadTeamMembers(), loadNotificationPrefs()]);
     setLoading(false);
   }
 
@@ -57,6 +61,34 @@ export function useSettings() {
     if (data) setLightTypes(data);
   }
 
+  async function loadControlTypes() {
+    const { data } = await supabase
+      .from('control_types')
+      .select('*')
+      .order('kind')
+      .order('sort_order');
+    if (data) setControlTypes(data);
+  }
+
+  async function addControlType() {
+    if (!newControlName.trim()) return;
+    setSaving(true);
+    const maxOrder = controlTypes.filter(t => t.kind === newControlKind).length;
+    await supabase.from('control_types').insert({
+      name: newControlName.trim(),
+      kind: newControlKind,
+      sort_order: maxOrder + 1,
+    });
+    setNewControlName('');
+    await loadControlTypes();
+    setSaving(false);
+  }
+
+  async function deleteControlType(id: string) {
+    await supabase.from('control_types').delete().eq('id', id);
+    await loadControlTypes();
+  }
+
   async function loadTeamMembers() {
     const { data } = await supabase
       .from('team_members')
@@ -86,6 +118,8 @@ export function useSettings() {
 
   const currentTypes = lightTypes.filter(t => t.category === 'current');
   const newTypes = lightTypes.filter(t => t.category === 'new');
+  const sensorTypes = controlTypes.filter(t => t.kind === 'occupancy');
+  const photocellTypes = controlTypes.filter(t => t.kind === 'photocell');
 
   return {
     lightTypes, teamMembers, newTypeName, setNewTypeName, newTypeCategory, setNewTypeCategory,
@@ -93,5 +127,7 @@ export function useSettings() {
     notifyAreaComplete, setNotifyAreaComplete, notifyJobComplete, setNotifyJobComplete,
     notifyJobNotes, setNotifyJobNotes, expandNotifications, setExpandNotifications,
     updateNotificationPref, addLightType, deleteLightType, currentTypes, newTypes,
+    controlTypes, expandControls, setExpandControls, newControlName, setNewControlName,
+    newControlKind, setNewControlKind, addControlType, deleteControlType, sensorTypes, photocellTypes,
   };
 }

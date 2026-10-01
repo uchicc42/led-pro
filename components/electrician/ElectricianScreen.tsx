@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { CONTROL_LABEL } from '../area-entry/useAreaEntry';
 import { getStatusLabel, useElectrician } from './useElectrician';
 
 // Native UI. The web UI lives in ElectricianScreen.web.tsx; Metro picks the right file per platform.
@@ -19,10 +20,44 @@ async function checkConnectivity() {
   return response.ok;
 }
 
+const CONTROL_STATUSES = ['pending', 'in_progress', 'complete'];
+const statusColors = (s: string) => ({
+  bg: s === 'complete' ? '#E1F5EE' : s === 'in_progress' ? '#E6F1FB' : '#F0F0EE',
+  fg: s === 'complete' ? '#085041' : s === 'in_progress' ? '#0C447C' : '#555',
+  border: s === 'complete' ? Colors.green : s === 'in_progress' ? Colors.blue : '#999',
+});
+
+// One sensor/photocell line with its own install status pills.
+function ControlStatusLine({ control, status, onStatus }: { control: any; status: string; onStatus: (s: string) => void }) {
+  return (
+    <View style={styles.controlBlock}>
+      <Text style={styles.controlText}>
+        {CONTROL_LABEL[control.kind as keyof typeof CONTROL_LABEL]}: {control.quantity} × {control.control_type || '?'}
+      </Text>
+      <View style={styles.controlPills}>
+        {CONTROL_STATUSES.map(s => {
+          const c = statusColors(s);
+          const active = status === s;
+          return (
+            <TouchableOpacity
+              key={s}
+              style={[styles.statusPill, active && { backgroundColor: c.bg, borderColor: c.border }]}
+              onPress={() => onStatus(s)}
+            >
+              <Text style={[styles.statusPillText, active && { color: c.fg, fontWeight: '600' }]}>{getStatusLabel(s)}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export default function ElectricianScreen() {
   const {
     areaId, jobId, area, job, lightRows, notes, setNotes, needsFollowUp, setNeedsFollowUp,
     loading, saving, isOnlineStatus, getInstallRow, updateInstallRow, save,
+    getRowControls, areaLevelControls, getControlStatus, updateControlStatus,
   } = useElectrician(checkConnectivity);
 
   if (loading) return (
@@ -131,9 +166,24 @@ export default function ElectricianScreen() {
                     onChangeText={v => updateInstallRow(row.id, 'removal_note', v)}
                   />
                 )}
+
+                {getRowControls(row.id).map(c => (
+                  <ControlStatusLine key={c.id} control={c} status={getControlStatus(c)} onStatus={s => updateControlStatus(c.id, s)} />
+                ))}
               </View>
             );
           })
+        )}
+
+        {areaLevelControls.length > 0 && (
+          <>
+            <Text style={[styles.sectionLabel, { marginTop: 8 }]}>Area sensors & photocells</Text>
+            <View style={styles.installBlock}>
+              {areaLevelControls.map(c => (
+                <ControlStatusLine key={c.id} control={c} status={getControlStatus(c)} onStatus={s => updateControlStatus(c.id, s)} />
+              ))}
+            </View>
+          </>
         )}
 
         <View style={styles.divider} />
@@ -197,6 +247,9 @@ export default function ElectricianScreen() {
 }
 
 const styles = StyleSheet.create({
+  controlBlock: { padding: 12, borderTopWidth: 0.5, borderTopColor: Colors.borderLight, gap: 8 },
+  controlText: { fontSize: 13, color: Colors.textPrimary, fontWeight: '500' },
+  controlPills: { flexDirection: 'row', gap: 8 },
   container: { flex: 1, backgroundColor: Colors.bgSecondary },
   scroll: { padding: 20, paddingBottom: 80 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },

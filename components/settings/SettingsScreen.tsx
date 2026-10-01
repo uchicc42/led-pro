@@ -25,12 +25,14 @@ export default function SettingsScreen() {
     notifyAreaComplete, setNotifyAreaComplete, notifyJobComplete, setNotifyJobComplete,
     notifyJobNotes, setNotifyJobNotes, expandNotifications, setExpandNotifications,
     updateNotificationPref, addLightType, deleteLightType, currentTypes, newTypes,
+    expandControls, setExpandControls, newControlName, setNewControlName,
+    newControlKind, setNewControlKind, addControlType, deleteControlType, sensorTypes, photocellTypes,
   } = useSettings();
 
-  function confirmDelete(id: string, name: string) {
-    Alert.alert('Remove light type', `Remove "${name}" from the list?`, [
+  function confirmDelete(id: string, name: string, remove: (id: string) => void = deleteLightType) {
+    Alert.alert('Remove type', `Remove "${name}" from the list?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => deleteLightType(id) },
+      { text: 'Remove', style: 'destructive', onPress: () => remove(id) },
     ]);
   }
 
@@ -110,6 +112,62 @@ export default function SettingsScreen() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.addTypeBtn} onPress={addLightType}>
+                <Text style={styles.addTypeBtnText}>Add</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* SENSOR & PHOTOCELL TYPES */}
+        <TouchableOpacity
+          style={styles.sectionRow}
+          onPress={() => setExpandControls(!expandControls)}
+        >
+          <Text style={styles.sectionIcon}>📡</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionTitle}>Sensor & photocell types</Text>
+            <Text style={styles.sectionSub}>{sensorTypes.length + photocellTypes.length} types</Text>
+          </View>
+          <Text style={styles.chevron}>{expandControls ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
+
+        {expandControls && (
+          <View style={styles.expandPanel}>
+            <Text style={styles.typeGroupLabel}>Occupancy sensors</Text>
+            <View style={styles.tagWrap}>
+              {sensorTypes.map(t => (
+                <TouchableOpacity key={t.id} style={styles.tag} onPress={() => confirmDelete(t.id, t.name, deleteControlType)}>
+                  <Text style={styles.tagText}>{t.name} ✕</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.typeGroupLabel, { marginTop: 14 }]}>Photocells</Text>
+            <View style={styles.tagWrap}>
+              {photocellTypes.map(t => (
+                <TouchableOpacity key={t.id} style={styles.tag} onPress={() => confirmDelete(t.id, t.name, deleteControlType)}>
+                  <Text style={styles.tagText}>{t.name} ✕</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.addTypeRow}>
+              <TextInput
+                style={styles.addTypeInput}
+                placeholder="Add new type..."
+                placeholderTextColor={Colors.textTertiary}
+                value={newControlName}
+                onChangeText={setNewControlName}
+              />
+              <TouchableOpacity
+                style={[styles.categoryToggle, newControlKind === 'photocell' && styles.categoryToggleActive]}
+                onPress={() => setNewControlKind(newControlKind === 'occupancy' ? 'photocell' : 'occupancy')}
+              >
+                <Text style={[styles.categoryToggleText, newControlKind === 'photocell' && { color: Colors.blue }]}>
+                  {newControlKind === 'occupancy' ? 'Sensor' : 'Photocell'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.addTypeBtn} onPress={addControlType}>
                 <Text style={styles.addTypeBtnText}>Add</Text>
               </TouchableOpacity>
             </View>

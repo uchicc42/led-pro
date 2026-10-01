@@ -5,12 +5,12 @@ import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
-import { generateHTML, useScopeExport } from './useScopeExport';
+import { areaControlsText, generateHTML, rowControlsText, sortedRows, useScopeExport } from './useScopeExport';
 
 // Native UI. The web UI lives in ScopeExportScreen.web.tsx; Metro picks the right file per platform.
 
 export default function ScopeExportScreen() {
-  const { jobId, job, areas, loading, totalOld, totalNew } = useScopeExport();
+  const { jobId, job, areas, loading, kinds, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
   const [generating, setGenerating] = useState(false);
 
   async function exportPDF() {
@@ -56,14 +56,32 @@ export default function ScopeExportScreen() {
           </View>
         </View>
 
+        {kinds.length > 0 && (
+          <View style={styles.statRow}>
+            {kinds.includes('occupancy') && (
+              <View style={styles.statCard}>
+                <Text style={styles.statVal}>{totalSensors}</Text>
+                <Text style={styles.statLabel}>Sensors</Text>
+              </View>
+            )}
+            {kinds.includes('photocell') && (
+              <View style={styles.statCard}>
+                <Text style={styles.statVal}>{totalPhotocells}</Text>
+                <Text style={styles.statLabel}>Photocells</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={styles.jobCard}>
           <Text style={styles.jobTitle}>{job?.name}</Text>
           <Text style={styles.jobMeta}>{job?.location}</Text>
         </View>
 
         {areas.map(area => {
-          const rows: any[] = area.light_rows || [];
-          if (rows.length === 0) return null;
+          const rows = sortedRows(area);
+          const areaWide = areaControlsText(area, kinds);
+          if (rows.length === 0 && !areaWide) return null;
           return (
             <View key={area.id} style={styles.areaBlock}>
               <Text style={styles.areaName}>{area.name}</Text>
@@ -78,8 +96,12 @@ export default function ScopeExportScreen() {
                     }
                   </Text>
                   {!!row.lumen_setting && <Text style={styles.lightRowMeta}>Lumen: {row.lumen_setting}</Text>}
+                  {!!rowControlsText(area, row.id, kinds) && (
+                    <Text style={styles.lightRowMeta}>{rowControlsText(area, row.id, kinds)}</Text>
+                  )}
                 </View>
               ))}
+              {!!areaWide && <Text style={styles.areaWide}>Area-wide: {areaWide}</Text>}
             </View>
           );
         })}
@@ -100,6 +122,7 @@ export default function ScopeExportScreen() {
 }
 
 const styles = StyleSheet.create({
+  areaWide: { fontSize: 12, color: '#085041', backgroundColor: '#EEF6F1', borderRadius: 6, padding: 8, marginTop: 8 },
   container: { flex: 1, backgroundColor: Colors.bgSecondary },
   scroll: { padding: 20, paddingBottom: 80 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },

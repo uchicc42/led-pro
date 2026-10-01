@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import type { CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { CONTROL_LABEL } from '../area-entry/useAreaEntry';
 import { getStatusLabel, useElectrician } from './useElectrician';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses ElectricianScreen.tsx.
@@ -10,10 +11,47 @@ async function checkConnectivity() {
   return navigator.onLine;
 }
 
+const CONTROL_STATUSES = ['pending', 'in_progress', 'complete'];
+const statusColors = (s: string) => ({
+  bg: s === 'complete' ? '#E1F5EE' : s === 'in_progress' ? '#E6F1FB' : '#F0F0EE',
+  fg: s === 'complete' ? '#085041' : s === 'in_progress' ? '#0C447C' : '#555',
+  border: s === 'complete' ? Colors.green : s === 'in_progress' ? Colors.blue : '#999',
+});
+
+// One sensor/photocell line with its own install status pills.
+function ControlStatusLine({ control, status, onStatus }: { control: any; status: string; onStatus: (s: string) => void }) {
+  return (
+    <div style={webStyles.controlBlock}>
+      <div style={webStyles.controlText}>
+        {CONTROL_LABEL[control.kind as keyof typeof CONTROL_LABEL]}: {control.quantity} × {control.control_type || '?'}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {CONTROL_STATUSES.map(s => {
+          const c = statusColors(s);
+          const active = status === s;
+          return (
+            <div
+              key={s}
+              style={{
+                ...webStyles.statusPill,
+                ...(active ? { background: c.bg, color: c.fg, borderColor: c.border, fontWeight: '600' } : {}),
+              }}
+              onClick={() => onStatus(s)}
+            >
+              {getStatusLabel(s)}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function ElectricianScreen() {
   const {
     areaId, jobId, area, job, lightRows, notes, setNotes, needsFollowUp, setNeedsFollowUp,
     loading, saving, isOnlineStatus, getInstallRow, updateInstallRow, save,
+    getRowControls, areaLevelControls, getControlStatus, updateControlStatus,
   } = useElectrician(checkConnectivity);
 
   if (loading) return (
@@ -156,9 +194,24 @@ export default function ElectricianScreen() {
                       />
                     </div>
                   )}
+
+                  {getRowControls(row.id).map(c => (
+                    <ControlStatusLine key={c.id} control={c} status={getControlStatus(c)} onStatus={s => updateControlStatus(c.id, s)} />
+                  ))}
                 </div>
               );
             })
+          )}
+
+          {areaLevelControls.length > 0 && (
+            <>
+              <div style={{ ...webStyles.sectionLabel, marginTop: 8 }}>Area sensors & photocells</div>
+              <div style={webStyles.installBlock}>
+                {areaLevelControls.map(c => (
+                  <ControlStatusLine key={c.id} control={c} status={getControlStatus(c)} onStatus={s => updateControlStatus(c.id, s)} />
+                ))}
+              </div>
+            </>
           )}
 
           <div style={webStyles.divider} />
@@ -233,6 +286,8 @@ export default function ElectricianScreen() {
 }
 
 const webStyles: Record<string, CSSProperties> = {
+  controlBlock: { padding: '10px 16px', borderTop: '0.5px solid #f0f0f0', display: 'flex', flexDirection: 'column', gap: 8 },
+  controlText: { fontSize: 13, fontWeight: '500', color: Colors.textPrimary },
   page: { minHeight: '100vh', background: Colors.bgSecondary, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', overflowY: 'auto' },
   container: { maxWidth: 700, margin: '0 auto', padding: '40px 32px 80px' },
   header: { display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 },

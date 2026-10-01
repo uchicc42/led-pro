@@ -1,10 +1,18 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { logChange } from '../../constants/notifications';
 import { getCurrentUser } from '../../constants/userStore';
 import { supabase } from '../../supabase';
 
 export const LUMEN_OPTIONS = ['L', 'M', 'H', '3500K', '4000K', '5000K'];
+
+// Occupancy sensors and photocells ("controls") are stored in area_controls.
+// A control with a light_row_id belongs to that row; one without belongs to the whole area.
+export type ControlKind = 'occupancy' | 'photocell';
+export const CONTROL_KINDS: ControlKind[] = ['occupancy', 'photocell'];
+export const CONTROL_LABEL: Record<ControlKind, string> = { occupancy: 'Sensor', photocell: 'Photocell' };
+
+export type RowControl = { id: string | null; qty: string; type: string };
 
 export type LightRow = {
   id: string | null;
@@ -18,16 +26,23 @@ export type LightRow = {
   hoursEnd: string;
   removedOnly: boolean;
   newAddition: boolean;
-  sensorQty: string;
-  sensorType: string;
+  controls: Record<ControlKind, RowControl>;
 };
 
-export type RowField = keyof LightRow;
-export type TypeField = 'oldType' | 'newType';
-export type PickerTarget = { rowIndex: number; field: TypeField };
+export type AreaControl = { key: string; id: string | null; kind: ControlKind; qty: string; type: string };
+
+export type RowField = Exclude<keyof LightRow, 'controls'>;
+
+// What the type picker is choosing for; screens resolve it to a title, options and a setter.
+export type PickerTarget =
+  | { scope: 'row'; rowIndex: number; field: 'oldType' | 'newType' }
+  | { scope: 'rowControl'; rowIndex: number; kind: ControlKind }
+  | { scope: 'areaControl'; key: string; kind: ControlKind };
 
 type Area = { id: string; name: string; notes: string | null; is_complete: boolean };
-type Job = { id: string; name: string; col_hours?: boolean; col_sensor?: boolean; col_layout?: boolean };
+type Job = { id: string; name: string; col_hours?: boolean; col_sensor?: boolean; col_photocell?: boolean; col_layout?: boolean };
+
+const emptyControl = (): RowControl => ({ id: null, qty: '', type: '' });
 
 const emptyRow = (): LightRow => ({
   id: null,
@@ -37,7 +52,7 @@ const emptyRow = (): LightRow => ({
   hoursOn: false, hoursStart: '06:00', hoursEnd: '18:00',
   removedOnly: false,
   newAddition: false,
-  sensorQty: '', sensorType: '',
+  controls: { occupancy: emptyControl(), photocell: emptyControl() },
 });
 
 export function useAreaEntry() {
@@ -45,15 +60,20 @@ export function useAreaEntry() {
   const [area, setArea] = useState<Area | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [rows, setRows] = useState<LightRow[]>([emptyRow()]);
+  const [areaControls, setAreaControls] = useState<AreaControl[]>([]);
   const [notes, setNotes] = useState('');
   const [isComplete, setIsComplete] = useState(false);
   const [lightTypes, setLightTypes] = useState<{ current: string[]; new: string[] }>({ current: [], new: [] });
+  const [controlTypes, setControlTypes] = useState<Record<ControlKind, string[]>>({ occupancy: [], photocell: [] });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [loading, setLoading] = useState(true);
+  const nextKey = useRef(0);
+  const newKey = () => `c${nextKey.current++}`;
 
   useEffect(() => {
     setRows([emptyRow()]);
+    setAreaControls([]);
     setNotes('');
     setIsComplete(false);
     setLoading(true);
@@ -61,7 +81,7 @@ export function useAreaEntry() {
   }, [areaId]);
 
   async function loadAll() {
-    await Promise.all([loadArea(), loadJob(), loadLightTypes(), loadExistingRows()]);
+    await Promise.all([loadArea(), loadJob(), loadLightTypes(), loadControlTypes(), loadExistingRows()]);
     setLoading(false);
   }
 
@@ -85,12 +105,25 @@ export function useAreaEntry() {
     }
   }
 
+  async function loadControlTypes() {
+    const { data } = await supabase.from('control_types').select('*').order('sort_order');
+    if (data) {
+      setControlTypes({
+        occupancy: data.filter((t: any) => t.kind === 'occupancy').map((t: any) => t.name),
+        photocell: data.filter((t: any) => t.kind === 'photocell').map((t: any) => t.name),
+      });
+    }
+  }
+
   async function loadExistingRows() {
-    const { data } = await supabase
-      .from('light_rows')
-      .select('*')
-      .eq('area_id', areaId)
-      .order('sort_order');
+    const [{ data }, { data: controls }] = await Promise.all([
+      supabase.from('light_rows').select('*').eq('area_id', areaId).order('sort_order'),
+      supabase.from('area_controls').select('*').eq('area_id', areaId).order('sort_order'),
+    ]);
+    const allControls: any[] = controls || [];
+    const toRowControl = (c: any): RowControl =>
+      c ? { id: c.id, qty: String(c.quantity || ''), type: c.control_type || '' } : emptyControl();
+
     if (data && data.length > 0) {
       const mapped: LightRow[] = data.map((r: any) => ({
         id: r.id,
@@ -104,12 +137,22 @@ export function useAreaEntry() {
         hoursEnd: r.hours_end || '18:00',
         removedOnly: r.removed_only || false,
         newAddition: r.new_addition || false,
-        sensorQty: '',
-        sensorType: '',
+        controls: {
+          occupancy: toRowControl(allControls.find(c => c.light_row_id === r.id && c.kind === 'occupancy')),
+          photocell: toRowControl(allControls.find(c => c.light_row_id === r.id && c.kind === 'photocell')),
+        },
       }));
       setRows(mapped);
     }
+
+    setAreaControls(allControls
+      .filter(c => !c.light_row_id)
+      .map(c => ({ key: newKey(), id: c.id, kind: c.kind, qty: String(c.quantity || ''), type: c.control_type || '' })));
   }
+
+  // Controls are only shown and saved for the kinds switched on in Job settings.
+  // Switching a kind off hides it without deleting anything already entered.
+  const enabledKinds = CONTROL_KINDS.filter(k => (k === 'occupancy' ? job?.col_sensor : job?.col_photocell));
 
   async function save(markComplete = false) {
     setSaving(true);
@@ -160,11 +203,10 @@ export function useAreaEntry() {
       insertedIds = dbRows.flatMap((r, i) => rows[i].id ? [] : [idBySort.get(r.sort_order)]);
     }
 
-    const savedRows = (() => {
+    let savedRows = (() => {
       let next = 0;
       return rows.map(r => r.id ? r : { ...r, id: insertedIds[next++] ?? null });
     })();
-    setRows(savedRows);
 
     const keepIds = savedRows.map(r => r.id).filter(Boolean);
     const { error: deleteError } = await supabase
@@ -172,7 +214,19 @@ export function useAreaEntry() {
       .delete()
       .eq('area_id', areaId)
       .not('id', 'in', `(${keepIds.join(',')})`);
-    if (deleteError) return failed('Saved, but removed rows could not be deleted. Try saving again.');
+    if (deleteError) {
+      setRows(savedRows);
+      return failed('Saved, but removed rows could not be deleted. Try saving again.');
+    }
+
+    const controlsResult = await saveControls(savedRows);
+    if (!controlsResult) {
+      setRows(savedRows);
+      return failed('Light rows saved, but sensors/photocells could not be saved. Try saving again.');
+    }
+    savedRows = controlsResult.rows;
+    setRows(savedRows);
+    setAreaControls(controlsResult.areaControls);
 
     // Log the change
     try {
@@ -186,6 +240,78 @@ export function useAreaEntry() {
 
     setSaving(false);
     if (markComplete) setIsComplete(true);
+  }
+
+  // Saves row and area controls for the enabled kinds with the same update/insert/delete-removed
+  // approach as light rows. Returns state with database ids filled in, or null on failure.
+  async function saveControls(savedRows: LightRow[]) {
+    if (enabledKinds.length === 0) return { rows: savedRows, areaControls };
+
+    type Desired = { key: string; id: string | null; record: Record<string, any> };
+    const desired: Desired[] = [];
+
+    savedRows.forEach((r, i) => {
+      if (!r.id) return;
+      enabledKinds.forEach(kind => {
+        const c = r.controls[kind];
+        const quantity = parseInt(c.qty) || 0;
+        if (quantity <= 0) return;
+        desired.push({
+          key: `row:${r.id}:${kind}`,
+          id: c.id,
+          record: { area_id: areaId, light_row_id: r.id, kind, control_type: c.type || null, quantity, sort_order: i },
+        });
+      });
+    });
+
+    areaControls.forEach((c, j) => {
+      if (!enabledKinds.includes(c.kind)) return;
+      const quantity = parseInt(c.qty) || 0;
+      if (quantity <= 0) return;
+      desired.push({
+        key: `area:${j}`,
+        id: c.id,
+        record: { area_id: areaId, light_row_id: null, kind: c.kind, control_type: c.type || null, quantity, sort_order: j },
+      });
+    });
+
+    const toUpdate = desired.filter(d => d.id).map(d => ({ ...d.record, id: d.id }));
+    const toInsert = desired.filter(d => !d.id);
+
+    if (toUpdate.length > 0) {
+      const { error } = await supabase.from('area_controls').upsert(toUpdate);
+      if (error) return null;
+    }
+
+    const idByKey = new Map<string, string>(desired.filter(d => d.id).map(d => [d.key, d.id as string]));
+    if (toInsert.length > 0) {
+      const { data, error } = await supabase
+        .from('area_controls')
+        .insert(toInsert.map(d => d.record))
+        .select('id, light_row_id, kind, sort_order');
+      if (error || !data) return null;
+      data.forEach((d: any) => {
+        idByKey.set(d.light_row_id ? `row:${d.light_row_id}:${d.kind}` : `area:${d.sort_order}`, d.id);
+      });
+    }
+
+    const keep = [...idByKey.values()];
+    let del = supabase.from('area_controls').delete().eq('area_id', areaId).in('kind', enabledKinds);
+    if (keep.length > 0) del = del.not('id', 'in', `(${keep.join(',')})`);
+    const { error: deleteError } = await del;
+    if (deleteError) return null;
+
+    const rowsWithIds = savedRows.map(r => {
+      const controls = { ...r.controls };
+      enabledKinds.forEach(kind => {
+        controls[kind] = { ...controls[kind], id: idByKey.get(`row:${r.id}:${kind}`) ?? null };
+      });
+      return { ...r, controls };
+    });
+    const areaControlsWithIds = areaControls.map((c, j) =>
+      enabledKinds.includes(c.kind) ? { ...c, id: idByKey.get(`area:${j}`) ?? null } : c);
+
+    return { rows: rowsWithIds, areaControls: areaControlsWithIds };
   }
 
   function addRow() {
@@ -205,13 +331,57 @@ export function useAreaEntry() {
     setRows(updated);
   }
 
+  function updateRowControl(index: number, kind: ControlKind, field: 'qty' | 'type', value: string) {
+    const updated = [...rows];
+    const row = updated[index];
+    updated[index] = { ...row, controls: { ...row.controls, [kind]: { ...row.controls[kind], [field]: value } } };
+    setRows(updated);
+  }
+
+  function addAreaControl(kind: ControlKind) {
+    setAreaControls([...areaControls, { key: newKey(), id: null, kind, qty: '1', type: '' }]);
+  }
+
+  function updateAreaControl(key: string, field: 'qty' | 'type', value: string) {
+    setAreaControls(areaControls.map(c => (c.key === key ? { ...c, [field]: value } : c)));
+  }
+
+  function removeAreaControl(key: string) {
+    setAreaControls(areaControls.filter(c => c.key !== key));
+  }
+
+  // Resolves a picker target into what the picker UI needs, shared by both platforms.
+  function describePicker(target: PickerTarget) {
+    if (target.scope === 'row') {
+      return {
+        title: target.field === 'oldType' ? 'Current light type' : 'New light type',
+        options: target.field === 'oldType' ? lightTypes.current : lightTypes.new,
+        select: (item: string) => updateRow(target.rowIndex, target.field, item),
+      };
+    }
+    if (target.scope === 'rowControl') {
+      return {
+        title: `${CONTROL_LABEL[target.kind]} type`,
+        options: controlTypes[target.kind],
+        select: (item: string) => updateRowControl(target.rowIndex, target.kind, 'type', item),
+      };
+    }
+    return {
+      title: `${CONTROL_LABEL[target.kind]} type`,
+      options: controlTypes[target.kind],
+      select: (item: string) => updateAreaControl(target.key, 'type', item),
+    };
+  }
+
+  const visibleAreaControls = areaControls.filter(c => enabledKinds.includes(c.kind));
   const backToAreaList = `/area-list?jobId=${jobId}`;
   const layoutCanvasHref = `/layout-canvas?areaId=${areaId}&jobId=${jobId}&areaName=${area?.name}`;
 
   return {
     area, job, rows, notes, setNotes, isComplete, lightTypes, saving, saveError, loading,
-    save, addRow, removeRow, updateRow,
-    backToAreaList, layoutCanvasHref,
+    save, addRow, removeRow, updateRow, updateRowControl,
+    enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
+    describePicker, backToAreaList, layoutCanvasHref,
   };
 }
 

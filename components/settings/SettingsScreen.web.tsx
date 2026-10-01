@@ -14,11 +14,13 @@ export default function SettingsScreen() {
     notifyAreaComplete, setNotifyAreaComplete, notifyJobComplete, setNotifyJobComplete,
     notifyJobNotes, setNotifyJobNotes, expandNotifications, setExpandNotifications,
     updateNotificationPref, addLightType, deleteLightType, currentTypes, newTypes,
+    expandControls, setExpandControls, newControlName, setNewControlName,
+    newControlKind, setNewControlKind, addControlType, deleteControlType, sensorTypes, photocellTypes,
   } = useSettings();
 
-  function confirmDelete(id: string, name: string) {
-    if (window.confirm(`Remove "${name}" from the light types list?`)) {
-      deleteLightType(id);
+  function confirmDelete(id: string, name: string, remove: (id: string) => void = deleteLightType) {
+    if (window.confirm(`Remove "${name}" from the list?`)) {
+      remove(id);
     }
   }
 
@@ -108,6 +110,70 @@ export default function SettingsScreen() {
                 <button
                   style={{ ...webStyles.addTypeBtn, opacity: saving ? 0.6 : 1 }}
                   onClick={addLightType}
+                  disabled={saving}
+                >
+                  {saving ? '...' : 'Add'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* SENSOR & PHOTOCELL TYPES */}
+        <div style={webStyles.section}>
+          <div style={webStyles.sectionHeader} onClick={() => setExpandControls(!expandControls)}>
+            <div style={webStyles.sectionHeaderLeft}>
+              <div style={webStyles.sectionIcon}>📡</div>
+              <div>
+                <div style={webStyles.sectionTitle}>Sensor & photocell types</div>
+                <div style={webStyles.sectionSub}>Dropdown options for occupancy sensors and photocells</div>
+              </div>
+            </div>
+            <div style={webStyles.sectionCount}>{sensorTypes.length + photocellTypes.length} types</div>
+            <div style={webStyles.chevron}>{expandControls ? '▲' : '▼'}</div>
+          </div>
+
+          {expandControls && (
+            <div style={webStyles.expandPanel}>
+              <div style={webStyles.typeGroupLabel}>Occupancy sensors</div>
+              <div style={webStyles.tagWrap}>
+                {sensorTypes.map(t => (
+                  <div key={t.id} style={webStyles.tag}>
+                    {t.name}
+                    <span style={webStyles.tagDel} onClick={() => confirmDelete(t.id, t.name, deleteControlType)}>✕</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ ...webStyles.typeGroupLabel, marginTop: 16 }}>Photocells</div>
+              <div style={webStyles.tagWrap}>
+                {photocellTypes.map(t => (
+                  <div key={t.id} style={webStyles.tag}>
+                    {t.name}
+                    <span style={webStyles.tagDel} onClick={() => confirmDelete(t.id, t.name, deleteControlType)}>✕</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={webStyles.addTypeRow}>
+                <input
+                  style={webStyles.addTypeInput}
+                  placeholder="Add new type..."
+                  value={newControlName}
+                  onChange={e => setNewControlName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addControlType(); }}
+                />
+                <select
+                  style={webStyles.categorySelect}
+                  value={newControlKind}
+                  onChange={e => setNewControlKind(e.target.value as 'occupancy' | 'photocell')}
+                >
+                  <option value="occupancy">Sensor</option>
+                  <option value="photocell">Photocell</option>
+                </select>
+                <button
+                  style={{ ...webStyles.addTypeBtn, opacity: saving ? 0.6 : 1 }}
+                  onClick={addControlType}
                   disabled={saving}
                 >
                   {saving ? '...' : 'Add'}

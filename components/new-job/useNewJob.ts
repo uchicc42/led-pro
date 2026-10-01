@@ -48,8 +48,8 @@ export function useNewJob() {
   }
 
   const columns = [
-    { label: 'Occupancy sensor', sub: 'Qty + type column', val: colSensor, set: setColSensor },
-    { label: 'Photocell', sub: 'Photocell quantity column', val: colPhotocell, set: setColPhotocell },
+    { label: 'Occupancy sensor', sub: 'Sensors per light row and per area', val: colSensor, set: setColSensor },
+    { label: 'Photocell', sub: 'Photocells per light row and per area', val: colPhotocell, set: setColPhotocell },
     { label: 'Room layout / exhibit', sub: 'Ceiling diagram per area', val: colLayout, set: setColLayout },
     { label: 'Hours-based flag', sub: 'Color-code limited-hour lights', val: colHours, set: setColHours },
   ];
