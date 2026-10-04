@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { NotOnDevice } from '../ui/not-on-device';
 import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import { useAreaList } from './useAreaList';
 
@@ -19,13 +20,15 @@ import { useAreaList } from './useAreaList';
 
 export default function AreaListScreen() {
   const {
-    jobId, job, loading, addingArea, setAddingArea, newAreaName, setNewAreaName,
+    jobId, job, loading, notOnDevice, addingArea, setAddingArea, newAreaName, setNewAreaName,
     filter, setFilter, jobNotes, notesSaved, saveJobNotes, addArea, toggleComplete, deleteArea,
     getFilteredAreas, completed, total, progress, openIssues,
   } = useAreaList({ live: 'realtime' });
   // The role check reads the web session store, which doesn't exist on native, so this was always false here.
   const isElectrician = false;
   const scrollRef = useRef<ScrollView>(null);
+
+  if (notOnDevice) return <NotOnDevice />;
 
   if (loading) return (
     <View style={styles.center}>

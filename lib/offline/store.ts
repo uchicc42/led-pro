@@ -9,14 +9,14 @@ import { useSyncExternalStore } from 'react';
 
 export type Table =
   | 'jobs' | 'areas' | 'light_rows' | 'area_controls' | 'area_photos'
-  | 'job_issues' | 'install_rows' | 'light_types' | 'control_types';
+  | 'job_issues' | 'install_rows' | 'light_types' | 'control_types' | 'team_members';
 
 export const TABLES: Table[] = [
   'jobs', 'areas', 'light_rows', 'area_controls', 'area_photos',
-  'job_issues', 'install_rows', 'light_types', 'control_types',
+  'job_issues', 'install_rows', 'light_types', 'control_types', 'team_members',
 ];
 
-export type Row = Record<string, any> & { id: string };
+export type Row = { id: string; [field: string]: any };
 
 const storageKey = (t: Table) => `ledpro:offline:v1:${t}`;
 
@@ -30,6 +30,8 @@ const listeners = new Set<() => void>();
 
 export type StoreSnapshot = {
   version: number;
+  /** True once the saved device copy has been read. */
+  loaded: boolean;
   all: (t: Table) => Row[];
   get: (t: Table, id: string | null | undefined) => Row | undefined;
   where: (t: Table, predicate: (r: Row) => boolean) => Row[];
@@ -38,6 +40,7 @@ export type StoreSnapshot = {
 function makeSnapshot(version: number): StoreSnapshot {
   return {
     version,
+    loaded,
     all: t => [...data[t].values()],
     get: (t, id) => (id ? data[t].get(id) : undefined),
     where: (t, predicate) => [...data[t].values()].filter(predicate),

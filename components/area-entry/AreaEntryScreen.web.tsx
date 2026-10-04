@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState, type CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { NotOnDevice } from '../ui/not-on-device';
 import AreaPhotos from '../area-photos/AreaPhotos';
 import { CONTROL_LABEL, ControlKind, LUMEN_OPTIONS, PickerTarget, useAreaEntry } from './useAreaEntry';
 
@@ -96,13 +97,15 @@ function ControlLine({ kind, qty, type, onQty, onPickType, onRemove }: {
 
 export default function AreaEntryScreen() {
   const {
-    areaId, jobId, area, job, rows, notes, setNotes, isComplete, saving, saveError, loading,
+    areaId, jobId, area, job, rows, notes, setNotes, isComplete, saving, saveError, loading, notOnDevice,
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
     describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor,
   } = useAreaEntry();
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const picker = pickerTarget ? describePicker(pickerTarget) : null;
+
+  if (notOnDevice) return <NotOnDevice backHref={backToAreaList} />;
 
   if (loading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

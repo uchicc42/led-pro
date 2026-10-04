@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { NotOnDevice } from '../ui/not-on-device';
 import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import { useJobSettings } from './useJobSettings';
 
@@ -17,7 +18,7 @@ import { useJobSettings } from './useJobSettings';
 
 export default function JobSettingsScreen() {
   const {
-    loading, name, setName, location, setLocation, date, setDate, mode, setMode,
+    loading, notOnDevice, name, setName, location, setLocation, date, setDate, mode, setMode,
     columns, saving, error, isReady, detailsDirty, savedFlash,
     saveDetails, saveAndGoBack, goBack,
   } = useJobSettings();
@@ -30,6 +31,8 @@ export default function JobSettingsScreen() {
       { text: 'Save', onPress: saveAndGoBack },
     ]);
   }
+
+  if (notOnDevice) return <NotOnDevice />;
 
   if (loading) return (
     <View style={styles.center}>

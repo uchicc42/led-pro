@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Colors } from '../../constants/Colors';
 import { getCurrentUser } from '../../constants/userStore';
+import { isOnline } from '../../lib/offline/connectivity';
+import { useStore } from '../../lib/offline/store';
+import { pullJobsList } from '../../lib/offline/sync';
 import { supabase } from '../../supabase';
 
 type Options = {
@@ -10,42 +14,45 @@ type Options = {
 };
 
 export function useHome({ live, initialUser }: Options) {
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const store = useStore();
   const [currentUser, setCurrentUser] = useState<any>(() => initialUser?.() ?? null);
 
   useEffect(() => {
     getCurrentUser().then(user => setCurrentUser(user));
   }, []);
 
-  async function loadJobs() {
-    const { data } = await supabase
-      .from('jobs')
-      .select(`
-        *,
-        created_by:team_members(name, initials, color),
-        areas(id, is_complete)
-      `)
-      .order('created_at', { ascending: false });
-    if (data) setJobs(data);
-    setLoading(false);
-  }
-
+  // Jobs come from the device copy (works offline); live updates refresh that copy.
   useEffect(() => {
-    loadJobs();
+    const refresh = () => { if (isOnline()) pullJobsList(); };
+    refresh();
     if (live === 'realtime') {
       const subscription = supabase
         .channel('jobs-channel')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
-          loadJobs();
-        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, refresh)
         .subscribe();
       return () => { supabase.removeChannel(subscription); };
     } else {
-      const interval = setInterval(loadJobs, 10000);
+      const interval = setInterval(refresh, 15000);
       return () => clearInterval(interval);
     }
   }, []);
+
+  // Pick up jobs created or changed elsewhere each time home is shown.
+  useFocusEffect(
+    useCallback(() => {
+      if (isOnline()) pullJobsList();
+    }, [])
+  );
+
+  const jobs = store.all('jobs')
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+    .map((job): any => {
+      // Use the device's areas when this job has been downloaded (includes offline changes),
+      // otherwise the summary that came with the jobs list.
+      const localAreas = store.where('areas', a => a.job_id === job.id);
+      return { ...job, created_by: job._created_by, areas: localAreas.length > 0 ? localAreas : job._areas ?? [] };
+    });
+  const loading = !store.loaded && jobs.length === 0;
 
   const activeJobs = jobs.filter(j => j.status !== 'complete');
   const completedToday = jobs.filter(j => {

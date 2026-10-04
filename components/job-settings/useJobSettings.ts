@@ -1,8 +1,10 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { logChange } from '../../constants/notifications';
 import { getCurrentUser } from '../../constants/userStore';
-import { supabase } from '../../supabase';
+import { useOnline } from '../../lib/offline/connectivity';
+import { patchRow, queueCall } from '../../lib/offline/data';
+import { useStore } from '../../lib/offline/store';
+import { trackJob } from '../../lib/offline/sync';
 
 type Mode = 'counting' | 'electrician';
 type FeatureField = 'col_sensor' | 'col_photocell' | 'col_layout' | 'col_hours';
@@ -14,49 +16,51 @@ const FEATURE_LABEL: Record<FeatureField, string> = {
   col_hours: 'Hours flag',
 };
 
+// Reads and writes the device copy, so job settings work without signal and every screen
+// sees a change immediately.
 export function useJobSettings() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
-  const [loading, setLoading] = useState(true);
+  const store = useStore();
+  const online = useOnline();
+  const job = store.get('jobs', jobId) ?? null;
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
   const [date, setDate] = useState('');
-  const [mode, setModeState] = useState<Mode>('counting');
-  const [features, setFeatures] = useState<Record<FeatureField, boolean>>({
-    col_sensor: false, col_photocell: false, col_layout: false, col_hours: false,
-  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [savedCount, setSavedCount] = useState(0);
   const savedFlash = savedCount > 0;
-  // Last saved name/location/date, to tell whether the details have unsaved edits.
-  const [savedDetails, setSavedDetails] = useState({ name: '', location: '', date: '' });
+  const [detailsFor, setDetailsFor] = useState<string | null>(null);
 
-  // Show the saved values each time the screen opens (it stays mounted between visits).
+  // Switches and mode show the saved values directly.
+  const mode: Mode = job?.mode === 'electrician' ? 'electrician' : 'counting';
+  const features: Record<FeatureField, boolean> = {
+    col_sensor: !!job?.col_sensor,
+    col_photocell: !!job?.col_photocell,
+    col_layout: !!job?.col_layout,
+    col_hours: !!job?.col_hours,
+  };
+  const savedDetails = { name: job?.name || '', location: job?.location || '', date: job?.date || '' };
+
   useFocusEffect(
     useCallback(() => {
-      loadJob();
+      trackJob(jobId);
+      setDetailsFor(null); // refill the text boxes from the saved job on each visit
+      setError('');
     }, [jobId])
   );
 
-  async function loadJob() {
-    setLoading(true);
-    setError('');
-    const { data } = await supabase.from('jobs').select('*').eq('id', jobId).single();
-    if (data) {
-      setName(data.name || '');
-      setLocation(data.location || '');
-      setDate(data.date || '');
-      setSavedDetails({ name: data.name || '', location: data.location || '', date: data.date || '' });
-      setModeState(data.mode === 'electrician' ? 'electrician' : 'counting');
-      setFeatures({
-        col_sensor: !!data.col_sensor,
-        col_photocell: !!data.col_photocell,
-        col_layout: !!data.col_layout,
-        col_hours: !!data.col_hours,
-      });
-    }
-    setLoading(false);
-  }
+  // Fill the text boxes from the saved job once per visit.
+  useEffect(() => {
+    if (!job || detailsFor === job.id) return;
+    setName(job.name || '');
+    setLocation(job.location || '');
+    setDate(job.date || '');
+    setDetailsFor(job.id);
+  }, [job, detailsFor]);
+
+  const loading = !store.loaded || (!job && online);
+  const notOnDevice = store.loaded && !job && !online;
 
   // Each save bumps the counter, which restarts the timer that hides "Saved".
   function flashSaved() {
@@ -70,35 +74,22 @@ export function useJobSettings() {
   }, [savedCount]);
 
   async function log(description: string) {
-    try {
-      const user = await getCurrentUser();
-      await logChange(null, jobId, user?.id, user?.name, 'job_settings', description);
-    } catch (e) { console.log('Log error:', e); }
+    const user = await getCurrentUser();
+    queueCall('logChange', null, jobId, user?.id, user?.name, 'job_settings', description);
   }
 
   // Feature switches and mode save the moment they change, like switches elsewhere on the phone.
-  async function setFeature(field: FeatureField, value: boolean) {
+  function setFeature(field: FeatureField, value: boolean) {
     setError('');
-    setFeatures(prev => ({ ...prev, [field]: value }));
-    const { error: err } = await supabase.from('jobs').update({ [field]: value }).eq('id', jobId);
-    if (err) {
-      setFeatures(prev => ({ ...prev, [field]: !value }));
-      return setError('Could not save that change. Check your connection and try again.');
-    }
+    patchRow('jobs', jobId, { [field]: value });
     flashSaved();
     log(`${FEATURE_LABEL[field]} turned ${value ? 'on' : 'off'} for ${savedDetails.name}`);
   }
 
-  async function setMode(value: Mode) {
+  function setMode(value: Mode) {
     if (value === mode) return;
-    const previous = mode;
     setError('');
-    setModeState(value);
-    const { error: err } = await supabase.from('jobs').update({ mode: value }).eq('id', jobId);
-    if (err) {
-      setModeState(previous);
-      return setError('Could not save that change. Check your connection and try again.');
-    }
+    patchRow('jobs', jobId, { mode: value });
     flashSaved();
     log(`Mode changed to ${value} for ${savedDetails.name}`);
   }
@@ -115,16 +106,8 @@ export function useJobSettings() {
     if (!isReady) return false;
     setSaving(true);
     setError('');
-    const { error: err } = await supabase
-      .from('jobs')
-      .update({ name: name.trim(), location: location.trim(), date })
-      .eq('id', jobId);
+    patchRow('jobs', jobId, { name: name.trim(), location: location.trim(), date });
     setSaving(false);
-    if (err) {
-      setError('Failed to save job details. Please try again.');
-      return false;
-    }
-    setSavedDetails({ name: name.trim(), location: location.trim(), date });
     log(`Job details updated for ${name.trim()}`);
     return true;
   }
@@ -151,7 +134,7 @@ export function useJobSettings() {
   }));
 
   return {
-    loading, name, setName, location, setLocation, date, setDate, mode, setMode,
+    loading, notOnDevice, name, setName, location, setLocation, date, setDate, mode, setMode,
     columns, saving, error, isReady, detailsDirty, savedFlash,
     saveDetails, saveAndGoBack, goBack,
   };

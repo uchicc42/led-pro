@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { NotOnDevice } from '../ui/not-on-device';
 import { useAreaList } from './useAreaList';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses AreaListScreen.tsx.
@@ -19,7 +20,7 @@ function readStoredSession() {
 
 export default function AreaListScreen() {
   const {
-    jobId, job, loading, addingArea, setAddingArea, newAreaName, setNewAreaName,
+    jobId, job, loading, notOnDevice, addingArea, setAddingArea, newAreaName, setNewAreaName,
     filter, setFilter, jobNotes, notesSaved, saveJobNotes, addArea, toggleComplete, deleteArea,
     getFilteredAreas, completed, total, progress, openIssues,
   } = useAreaList({ live: 'poll', initialUser: readStoredSession });
@@ -31,6 +32,8 @@ export default function AreaListScreen() {
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
   }, []);
+
+  if (notOnDevice) return <NotOnDevice />;
 
   if (loading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

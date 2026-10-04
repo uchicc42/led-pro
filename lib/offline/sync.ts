@@ -76,15 +76,18 @@ registerConflictHandler(async (table, theirs, mine, fields) => {
 const trackedJobs = new Set<string>();
 
 async function pullReference() {
-  const [{ data: lightTypes }, { data: controlTypes }] = await Promise.all([
+  const [{ data: lightTypes }, { data: controlTypes }, { data: members }] = await Promise.all([
     supabase.from('light_types').select('*'),
     supabase.from('control_types').select('*'),
+    // Display fields only: PINs are never stored on the device.
+    supabase.from('team_members').select('id, name, initials, color, role'),
   ]);
   if (lightTypes) replaceScope('light_types', () => true, lightTypes, isPending);
   if (controlTypes) replaceScope('control_types', () => true, controlTypes, isPending);
+  if (members) replaceScope('team_members', () => true, members, isPending);
 }
 
-async function pullJobsList(): Promise<Row[]> {
+export async function pullJobsList(): Promise<Row[]> {
   const { data, error } = await supabase
     .from('jobs')
     .select('*, created_by_member:team_members(name, initials, color), areas(id, is_complete)');

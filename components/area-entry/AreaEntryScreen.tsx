@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { NotOnDevice } from '../ui/not-on-device';
 import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import AreaPhotos from '../area-photos/AreaPhotos';
 import { AreaControl, CONTROL_LABEL, ControlKind, PickerTarget, useAreaEntry } from './useAreaEntry';
@@ -123,13 +124,15 @@ function ControlLine({ kind, qty, type, onQty, onPickType, onRemove }: {
 
 export default function AreaEntryScreen() {
   const {
-    areaId, jobId, area, job, rows, notes, setNotes, isComplete, saving, saveError, loading,
+    areaId, jobId, area, job, rows, notes, setNotes, isComplete, saving, saveError, loading, notOnDevice,
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
     describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor,
   } = useAreaEntry();
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const picker = pickerTarget ? describePicker(pickerTarget) : null;
+
+  if (notOnDevice) return <NotOnDevice backHref={backToAreaList} />;
 
   if (loading) return (
     <View style={styles.center}>

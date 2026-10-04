@@ -1,13 +1,14 @@
 import type { CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { NotOnDevice } from '../ui/not-on-device';
 import { useJobSettings } from './useJobSettings';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses JobSettingsScreen.tsx.
 
 export default function JobSettingsScreen() {
   const {
-    loading, name, setName, location, setLocation, date, setDate, mode, setMode,
+    loading, notOnDevice, name, setName, location, setLocation, date, setDate, mode, setMode,
     columns, saving, error, isReady, detailsDirty, savedFlash,
     saveDetails, saveAndGoBack, goBack,
   } = useJobSettings();
@@ -20,6 +21,8 @@ export default function JobSettingsScreen() {
       goBack();
     }
   }
+
+  if (notOnDevice) return <NotOnDevice />;
 
   if (loading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
