@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { supabase } from '../../supabase';
+import { getCurrentUser } from '../../constants/userStore';
+import { newId, saveRow } from '../../lib/offline/data';
 
 export function useNewJob() {
   const [name, setName] = useState('');
@@ -16,33 +17,38 @@ export function useNewJob() {
 
   const isReady = !!(name.trim() && location.trim() && date);
 
+  // Saved to the device copy and queued for upload, so jobs can be created without signal.
   async function createJob() {
     if (!isReady) return;
     setSaving(true);
     setError('');
+    const user = await getCurrentUser();
 
-    const { error: err } = await supabase
-      .from('jobs')
-      .insert({
-        name: name.trim(),
-        location: location.trim(),
-        date,
-        mode,
-        status: 'active',
-        col_sensor: colSensor,
-        col_photocell: colPhotocell,
-        col_layout: colLayout,
-        col_hours: colHours,
-      })
-      .select()
-      .single();
+    saveRow('jobs', {
+      id: newId(),
+      name: name.trim(),
+      location: location.trim(),
+      date,
+      mode,
+      status: 'active',
+      col_sensor: colSensor,
+      col_photocell: colPhotocell,
+      col_layout: colLayout,
+      col_hours: colHours,
+      created_by: user?.id ?? null,
+      created_at: new Date().toISOString(),
+    });
 
+    // The screen stays mounted between visits, so start fresh for the next job.
+    setName('');
+    setLocation('');
+    setDate(new Date().toISOString().split('T')[0]);
+    setMode('counting');
+    setColSensor(false);
+    setColPhotocell(false);
+    setColLayout(false);
+    setColHours(false);
     setSaving(false);
-
-    if (err) {
-      setError('Failed to create job. Please try again.');
-      return;
-    }
 
     router.replace('/home');
   }
