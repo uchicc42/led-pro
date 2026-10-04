@@ -46,6 +46,7 @@ export function getIcon(changeType: string) {
     case 'job_complete': return '🎉';
     case 'job_note': return '📝';
     case 'job_settings': return '⚙️';
+    case 'photo_added': return '📷';
     default: return '📋';
   }
 }

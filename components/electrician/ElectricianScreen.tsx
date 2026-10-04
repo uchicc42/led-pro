@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import AreaPhotos from '../area-photos/AreaPhotos';
 import { CONTROL_LABEL } from '../area-entry/useAreaEntry';
 import { getStatusLabel, useElectrician } from './useElectrician';
 
@@ -94,6 +95,8 @@ export default function ElectricianScreen() {
             {lightRows.map(r => `${r.quantity} × ${r.light_type_id || 'Unknown'}`).join('\n') || 'No lights entered yet'}
           </Text>
         </View>
+
+        <AreaPhotos areaId={areaId} jobId={jobId} />
 
         <Text style={styles.sectionLabel}>Install progress</Text>
 

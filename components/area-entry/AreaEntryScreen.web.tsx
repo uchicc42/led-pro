@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState, type CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import AreaPhotos from '../area-photos/AreaPhotos';
 import { CONTROL_LABEL, ControlKind, LUMEN_OPTIONS, PickerTarget, useAreaEntry } from './useAreaEntry';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses AreaEntryScreen.tsx.
@@ -95,7 +96,7 @@ function ControlLine({ kind, qty, type, onQty, onPickType, onRemove }: {
 
 export default function AreaEntryScreen() {
   const {
-    area, job, rows, notes, setNotes, isComplete, saving, saveError, loading,
+    areaId, jobId, area, job, rows, notes, setNotes, isComplete, saving, saveError, loading,
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
     describePicker, backToAreaList, layoutCanvasHref,
@@ -131,6 +132,9 @@ export default function AreaEntryScreen() {
         </div>
 
         <div style={webStyles.card}>
+          <AreaPhotos areaId={areaId} jobId={jobId} />
+          <div style={webStyles.divider} />
+
           {/* Column headers */}
           <div style={webStyles.colHeaderRow}>
             <div style={{ ...webStyles.colHeader, width: 60 }}>Old qty</div>

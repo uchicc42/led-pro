@@ -378,7 +378,7 @@ export function useAreaEntry() {
   const layoutCanvasHref = `/layout-canvas?areaId=${areaId}&jobId=${jobId}&areaName=${area?.name}`;
 
   return {
-    area, job, rows, notes, setNotes, isComplete, lightTypes, saving, saveError, loading,
+    areaId, jobId, area, job, rows, notes, setNotes, isComplete, lightTypes, saving, saveError, loading,
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
     describePicker, backToAreaList, layoutCanvasHref,

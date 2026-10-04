@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import type { CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import AreaPhotos from '../area-photos/AreaPhotos';
 import { CONTROL_LABEL } from '../area-entry/useAreaEntry';
 import { getStatusLabel, useElectrician } from './useElectrician';
 
@@ -109,6 +110,8 @@ export default function ElectricianScreen() {
           </div>
 
         <div style={webStyles.card}>
+          <AreaPhotos areaId={areaId} jobId={jobId} />
+          <div style={webStyles.divider} />
 
           {/* Install progress */}
           <div style={webStyles.sectionLabel}>Install progress</div>

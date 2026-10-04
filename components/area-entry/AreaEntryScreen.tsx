@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import AreaPhotos from '../area-photos/AreaPhotos';
 import { AreaControl, CONTROL_LABEL, ControlKind, PickerTarget, useAreaEntry } from './useAreaEntry';
 
 // Native (iOS/Android) UI. The web UI lives in AreaEntryScreen.web.tsx; Metro picks the right file per platform.
@@ -122,7 +123,7 @@ function ControlLine({ kind, qty, type, onQty, onPickType, onRemove }: {
 
 export default function AreaEntryScreen() {
   const {
-    area, job, rows, notes, setNotes, isComplete, saving, saveError, loading,
+    areaId, jobId, area, job, rows, notes, setNotes, isComplete, saving, saveError, loading,
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
     describePicker, backToAreaList, layoutCanvasHref,
@@ -154,6 +155,8 @@ export default function AreaEntryScreen() {
           <Text style={styles.headerTitle} numberOfLines={1}>{area?.name}</Text>
           <View style={{ width: 50 }} />
         </View>
+
+        <AreaPhotos areaId={areaId} jobId={jobId} />
 
         <Text style={styles.sectionLabel}>Light replacements</Text>
 
