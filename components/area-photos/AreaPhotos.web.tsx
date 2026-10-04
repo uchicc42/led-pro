@@ -50,7 +50,9 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
           {photos.map(p => (
             <div key={p.id} style={webStyles.thumbWrap} onClick={() => open(p)} title={p.note || undefined}>
               <img src={p.url} alt={p.note || 'Area photo'} style={webStyles.thumb} />
-              {p.note && <span style={webStyles.noteBadge}>📝</span>}
+              {p.note
+                ? <div style={webStyles.caption}>{p.note}</div>
+                : <div style={webStyles.captionEmpty}>+ Add note</div>}
             </div>
           ))}
         </div>
@@ -92,7 +94,8 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
 
 const webStyles: Record<string, CSSProperties> = {
   thumbWrap: { position: 'relative', cursor: 'pointer' },
-  noteBadge: { position: 'absolute', left: 4, bottom: 4, background: 'rgba(0,0,0,0.55)', borderRadius: 10, padding: '0 5px', fontSize: 11 },
+  caption: { fontSize: 12, color: Colors.textPrimary, marginTop: 6, lineHeight: '16px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' },
+  captionEmpty: { fontSize: 12, color: Colors.textTertiary, marginTop: 6 },
   noteRow: { display: 'flex', gap: 8, alignItems: 'flex-end' },
   noteInput: { flex: 1, padding: '8px 10px', fontSize: 14, borderRadius: 8, border: 'none', outline: 'none', fontFamily: 'inherit', resize: 'vertical', background: 'rgba(255,255,255,0.92)' },
   saveNoteBtn: { padding: '8px 14px', background: Colors.blue, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: '500' },
@@ -101,7 +104,7 @@ const webStyles: Record<string, CSSProperties> = {
   label: { fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em' },
   addBtn: { padding: '7px 14px', background: Colors.blue, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: '500' },
   error: { color: '#A32D2D', fontSize: 13, marginBottom: 8 },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8 },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, alignItems: 'start' },
   thumb: { width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 8, cursor: 'pointer', background: Colors.bgSecondary },
   empty: { fontSize: 13, color: Colors.textTertiary },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 },

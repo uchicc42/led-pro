@@ -55,20 +55,19 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
       {photos.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
           {photos.map(p => (
-            <TouchableOpacity key={p.id} onPress={() => setViewing(p)} accessibilityLabel="View photo">
+            <TouchableOpacity key={p.id} style={styles.photoCard} onPress={() => setViewing(p)} accessibilityLabel={p.note ? `Photo: ${p.note}` : 'View photo'}>
               <View>
                 <Image source={{ uri: p.url }} style={styles.thumb} contentFit="cover" transition={150} />
-                {!!p.note && (
-                  <View style={styles.noteBadge} accessibilityLabel="Has a note">
-                    <Text style={styles.pendingText}>📝</Text>
-                  </View>
-                )}
                 {p.pending && (
                   <View style={styles.pendingBadge} accessibilityLabel="Waiting to upload">
                     <Text style={styles.pendingText}>⏳</Text>
                   </View>
                 )}
               </View>
+              {/* The note shows under the photo; tapping opens it to add or edit one. */}
+              {p.note
+                ? <Text style={styles.caption} numberOfLines={3}>{p.note}</Text>
+                : <Text style={styles.captionEmpty}>+ Add note</Text>}
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -92,7 +91,9 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
 }
 
 const styles = StyleSheet.create({
-  noteBadge: { position: 'absolute', left: 4, bottom: 4, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, paddingHorizontal: 5, paddingVertical: 1 },
+  photoCard: { width: 128 },
+  caption: { fontSize: 12, color: Colors.textPrimary, marginTop: 6, lineHeight: 16 },
+  captionEmpty: { fontSize: 12, color: Colors.textTertiary, marginTop: 6 },
   pendingBadge: { position: 'absolute', right: 4, bottom: 4, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, paddingHorizontal: 5, paddingVertical: 1 },
   pendingText: { fontSize: 11, color: '#fff' },
   block: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 0.5, borderColor: Colors.borderLight, padding: 14, marginBottom: 10, gap: 10 },
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
   uploadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   uploadingText: { fontSize: 12, color: Colors.textSecondary },
   error: { fontSize: 12, color: '#A32D2D' },
-  strip: { gap: 8 },
-  thumb: { width: 96, height: 96, borderRadius: 8, backgroundColor: Colors.bgSecondary },
+  strip: { gap: 10, alignItems: 'flex-start' },
+  thumb: { width: 128, height: 128, borderRadius: 8, backgroundColor: Colors.bgSecondary },
   empty: { fontSize: 12, color: Colors.textTertiary },
 });
