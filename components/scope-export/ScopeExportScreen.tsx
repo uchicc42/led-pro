@@ -2,7 +2,7 @@ import * as Print from 'expo-print';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import { areaControlsText, generateHTML, rowColor, rowControlsText, sortedRows, tintOf, useScopeExport, withMount } from './useScopeExport';
@@ -17,9 +17,14 @@ export default function ScopeExportScreen() {
     setGenerating(true);
     try {
       const { uri } = await Print.printToFileAsync({ html: generateHTML(job, areas, typeColors) });
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('Sharing unavailable', 'The PDF was created, but this device can\'t open the share menu.');
+      } else {
+        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: `Scope of Work — ${job?.name ?? ''}` });
+      }
     } catch (e) {
       console.log('Print error:', e);
+      Alert.alert('Export failed', 'The scope PDF could not be created. Please try again.');
     }
     setGenerating(false);
   }

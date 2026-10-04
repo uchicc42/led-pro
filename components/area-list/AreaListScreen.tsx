@@ -185,6 +185,15 @@ export default function AreaListScreen() {
           />
         </View>
 
+        {!isElectrician && (
+          <TouchableOpacity
+            style={[styles.addBtn, { backgroundColor: Colors.blue, borderStyle: 'solid', borderColor: Colors.blue, marginBottom: 8 }]}
+            onPress={() => router.push(`/scope-export?jobId=${jobId}` as any)}
+          >
+            <Text style={[styles.addBtnText, { color: '#fff', fontWeight: '500' }]}>📄 Export scope of work</Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: openIssues > 0 ? '#FAECE7' : '#fff', borderStyle: 'solid', borderColor: openIssues > 0 ? '#D08A6E' : '#c0cfe0', marginBottom: 8 }]}
           onPress={() => router.push(`/job-issues?jobId=${jobId}` as any)}
