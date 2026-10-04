@@ -126,7 +126,7 @@ export default function AreaEntryScreen() {
     areaId, jobId, area, job, rows, notes, setNotes, isComplete, saving, saveError, loading,
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
-    describePicker, backToAreaList, layoutCanvasHref,
+    describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor,
   } = useAreaEntry();
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const picker = pickerTarget ? describePicker(pickerTarget) : null;
@@ -184,6 +184,16 @@ export default function AreaEntryScreen() {
                     </Text>
                   </TouchableOpacity>
                 </View>
+                {mountOptionsFor(row.oldType).length > 0 && (
+                  <TouchableOpacity
+                    style={[styles.mountBtn, !row.oldMount && styles.mountBtnMissing]}
+                    onPress={() => setPickerTarget({ scope: 'mount', rowIndex: i, side: 'old' })}
+                  >
+                    <Text style={[styles.mountText, !row.oldMount && { color: '#854F0B' }]} numberOfLines={1}>
+                      Mount: {row.oldMount || 'Select mount type *'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -216,11 +226,24 @@ export default function AreaEntryScreen() {
                     style={styles.typePickerWrap}
                     onPress={() => setPickerTarget({ scope: 'row', rowIndex: i, field: 'newType' })}
                   >
-                    <Text style={[styles.typeText, !!row.newType && { color: Colors.textPrimary }]} numberOfLines={1}>
-                      {row.newType || 'Select type...'}
-                    </Text>
+                    <View style={styles.typeWithDot}>
+                      {!!colorFor(row.newType) && <View style={[styles.colorDot, { backgroundColor: colorFor(row.newType)! }]} />}
+                      <Text style={[styles.typeText, { flexShrink: 1 }, !!row.newType && { color: Colors.textPrimary }]} numberOfLines={1}>
+                        {row.newType || 'Select type...'}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 </View>
+                {mountOptionsFor(row.newType).length > 0 && (
+                  <TouchableOpacity
+                    style={[styles.mountBtn, !row.newMount && styles.mountBtnMissing]}
+                    onPress={() => setPickerTarget({ scope: 'mount', rowIndex: i, side: 'new' })}
+                  >
+                    <Text style={[styles.mountText, !row.newMount && { color: '#854F0B' }]} numberOfLines={1}>
+                      Mount: {row.newMount || 'Select mount type *'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -357,6 +380,11 @@ export default function AreaEntryScreen() {
 }
 
 const styles = StyleSheet.create({
+  mountBtn: { marginTop: 6, marginLeft: 68, minHeight: 40, borderWidth: 0.5, borderColor: Colors.borderLight, borderRadius: 8, paddingHorizontal: 10, justifyContent: 'center', backgroundColor: Colors.bgSecondary },
+  mountBtnMissing: { borderColor: '#EF9F27', backgroundColor: '#FAEEDA' },
+  mountText: { fontSize: 12, color: Colors.textPrimary },
+  typeWithDot: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  colorDot: { width: 10, height: 10, borderRadius: 5 },
   rowControls: { marginTop: 8, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: Colors.borderLight, gap: 6 },
   controlLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   controlLabel: { width: 64, fontSize: 11, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },

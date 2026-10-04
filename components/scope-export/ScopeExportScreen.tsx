@@ -5,18 +5,18 @@ import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
-import { areaControlsText, generateHTML, rowControlsText, sortedRows, useScopeExport } from './useScopeExport';
+import { areaControlsText, generateHTML, rowColor, rowControlsText, sortedRows, tintOf, useScopeExport, withMount } from './useScopeExport';
 
 // Native UI. The web UI lives in ScopeExportScreen.web.tsx; Metro picks the right file per platform.
 
 export default function ScopeExportScreen() {
-  const { jobId, job, areas, loading, kinds, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
+  const { jobId, job, areas, loading, kinds, typeColors, legend, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
   const [generating, setGenerating] = useState(false);
 
   async function exportPDF() {
     setGenerating(true);
     try {
-      const { uri } = await Print.printToFileAsync({ html: generateHTML(job, areas) });
+      const { uri } = await Print.printToFileAsync({ html: generateHTML(job, areas, typeColors) });
       await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
     } catch (e) {
       console.log('Print error:', e);
@@ -73,6 +73,17 @@ export default function ScopeExportScreen() {
           </View>
         )}
 
+        {legend.length > 0 && (
+          <View style={styles.legend}>
+            {legend.map(l => (
+              <View key={l.name} style={styles.legendItem}>
+                <View style={[styles.legendSwatch, { backgroundColor: l.color }]} />
+                <Text style={styles.legendText}>{l.name}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         <View style={styles.jobCard}>
           <Text style={styles.jobTitle}>{job?.name}</Text>
           <Text style={styles.jobMeta}>{job?.location}</Text>
@@ -86,13 +97,13 @@ export default function ScopeExportScreen() {
             <View key={area.id} style={styles.areaBlock}>
               <Text style={styles.areaName}>{area.name}</Text>
               {rows.map((row, i) => (
-                <View key={i} style={styles.lightRow}>
+                <View key={i} style={[styles.lightRow, { borderLeftColor: rowColor(row, typeColors), backgroundColor: tintOf(rowColor(row, typeColors), 0.9) }]}>
                   <Text style={styles.lightRowText}>
                     {row.new_addition
-                      ? `➕ Add: ${row.new_quantity} × ${row.new_light_type || '?'}`
+                      ? `➕ Add: ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
                       : row.removed_only
-                      ? `🗑 Remove: ${row.quantity} × ${row.light_type_id || '?'}`
-                      : `${row.quantity} × ${row.light_type_id || '?'} → ${row.new_quantity} × ${row.new_light_type || '?'}`
+                      ? `🗑 Remove: ${row.quantity} × ${withMount(row.light_type_id, row.old_mount)}`
+                      : `${row.quantity} × ${withMount(row.light_type_id, row.old_mount)} → ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
                     }
                   </Text>
                   {!!row.lumen_setting && <Text style={styles.lightRowMeta}>Lumen: {row.lumen_setting}</Text>}
@@ -138,7 +149,11 @@ const styles = StyleSheet.create({
   jobMeta: { fontSize: 13, color: Colors.textTertiary, marginTop: 2 },
   areaBlock: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 0.5, borderColor: Colors.borderLight, marginBottom: 10 },
   areaName: { fontSize: 14, fontWeight: '600', color: Colors.blue, marginBottom: 8 },
-  lightRow: { paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: Colors.borderLight },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendSwatch: { width: 12, height: 12, borderRadius: 3 },
+  legendText: { fontSize: 12, color: Colors.textSecondary },
+  lightRow: { borderLeftWidth: 4, paddingLeft: 8, borderRadius: 4, marginBottom: 4, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: Colors.borderLight },
   lightRowText: { fontSize: 13, color: Colors.textPrimary },
   lightRowMeta: { fontSize: 11, color: Colors.textTertiary, marginTop: 2 },
   exportBtn: { backgroundColor: Colors.blue, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16 },

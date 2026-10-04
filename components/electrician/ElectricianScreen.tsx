@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import AreaPhotos from '../area-photos/AreaPhotos';
 import { CONTROL_LABEL } from '../area-entry/useAreaEntry';
+import { withMount } from '../scope-export/useScopeExport';
 import { getStatusLabel, useElectrician } from './useElectrician';
 
 // Native UI. The web UI lives in ElectricianScreen.web.tsx; Metro picks the right file per platform.
@@ -92,7 +93,10 @@ export default function ElectricianScreen() {
         <View style={styles.refPanel}>
           <Text style={styles.refLabel}>New lights ordered:</Text>
           <Text style={styles.refVal}>
-            {lightRows.map(r => `${r.quantity} × ${r.light_type_id || 'Unknown'}`).join('\n') || 'No lights entered yet'}
+            {lightRows
+              .filter(r => !r.removed_only)
+              .map(r => `${r.new_quantity} × ${withMount(r.new_light_type, r.new_mount)}`)
+              .join('\n') || 'No lights entered yet'}
           </Text>
         </View>
 
@@ -111,10 +115,10 @@ export default function ElectricianScreen() {
               <View key={row.id} style={styles.installBlock}>
                 <Text style={styles.installType}>
                   {row.new_addition
-                    ? `➕ ${row.new_quantity} × ${row.new_light_type || '?'}`
+                    ? `➕ ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
                     : row.removed_only
-                    ? `🗑 Remove: ${row.quantity} × ${row.light_type_id || '?'}`
-                    : `${row.quantity} × ${row.light_type_id || '?'} → ${row.new_quantity} × ${row.new_light_type || '?'}`
+                    ? `🗑 Remove: ${row.quantity} × ${withMount(row.light_type_id, row.old_mount)}`
+                    : `${row.quantity} × ${withMount(row.light_type_id, row.old_mount)} → ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
                   }
                 </Text>
                 <Text style={styles.installQty}>

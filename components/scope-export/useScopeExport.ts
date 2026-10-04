@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { NO_TYPE_COLOR, colorMap, ensureLightTypeColors, tintOf } from '../../constants/lightTypeColors';
 import { supabase } from '../../supabase';
 import { CONTROL_LABEL, ControlKind } from '../area-entry/useAreaEntry';
 
@@ -8,6 +9,7 @@ export function useScopeExport() {
   const [job, setJob] = useState<any>(null);
   const [areas, setAreas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [typeColors, setTypeColors] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     loadAll();
@@ -27,13 +29,42 @@ export function useScopeExport() {
       .eq('job_id', jobId)
       .order('created_at');
     if (areaData) setAreas(areaData);
+
+    const { data: types } = await supabase.from('light_types').select('id, name, category, color');
+    if (types) setTypeColors(colorMap(await ensureLightTypeColors(types as any[])));
     setLoading(false);
   }
 
   const kinds = enabledControlKinds(job);
   const totals = getTotals(areas, kinds);
 
-  return { jobId, job, areas, loading, kinds, ...totals };
+  const legend = legendFor(areas, typeColors);
+
+  return { jobId, job, areas, loading, kinds, typeColors, legend, ...totals };
+}
+
+// Row colour follows the new light type; rows with no new light (removed only) are grey.
+export function rowColor(row: any, typeColors: Map<string, string>) {
+  if (row.removed_only || !row.new_light_type) return NO_TYPE_COLOR;
+  return typeColors.get(row.new_light_type) ?? NO_TYPE_COLOR;
+}
+export { tintOf };
+
+// Light type name plus its mount, e.g. "2×4 LED panel (Recessed)".
+export function withMount(type: string | null, mount: string | null) {
+  if (!type) return '—';
+  return mount ? `${type} (${mount})` : type;
+}
+
+// Colour key: each new light type used on this job, in order of first appearance.
+export function legendFor(areas: any[], typeColors: Map<string, string>) {
+  const seen = new Map<string, string>();
+  areas.forEach(area => sortedRows(area).forEach(row => {
+    if (!row.removed_only && row.new_light_type && !seen.has(row.new_light_type)) {
+      seen.set(row.new_light_type, typeColors.get(row.new_light_type) ?? NO_TYPE_COLOR);
+    }
+  }));
+  return [...seen.entries()].map(([name, color]) => ({ name, color }));
 }
 
 // Sensors/photocells only appear on the scope when switched on in Job settings.
@@ -88,7 +119,8 @@ export function getTotals(areas: any[], kinds: ControlKind[] = []) {
 }
 
 // Printable scope-of-work document, shared by the web print flow and native expo-print.
-export function generateHTML(job: any, areas: any[]) {
+export function generateHTML(job: any, areas: any[], typeColors: Map<string, string> = new Map()) {
+  const legend = legendFor(areas, typeColors);
   const kinds = enabledControlKinds(job);
   const { totalOld, totalNew, totalSensors, totalPhotocells } = getTotals(areas, kinds);
   const showControls = kinds.length > 0;
@@ -106,12 +138,12 @@ export function generateHTML(job: any, areas: any[]) {
       : '';
 
     return rows.map((row: any, i: number) => `
-      <tr class="${i % 2 === 0 ? 'even' : 'odd'}">
+      <tr style="background: ${tintOf(rowColor(row, typeColors))}">
         ${i === 0 ? areaCell : ''}
         <td class="qty">${row.new_addition ? '—' : row.quantity || 0}</td>
-        <td>${row.new_addition ? '(new addition)' : row.light_type_id || '—'}</td>
+        <td>${row.new_addition ? '(new addition)' : withMount(row.light_type_id, row.old_mount)}</td>
         <td class="qty">${row.removed_only ? '—' : row.new_quantity || 0}</td>
-        <td>${row.removed_only ? '(removed only)' : row.new_light_type || '—'}</td>
+        <td class="type-cell" style="border-left: 4px solid ${rowColor(row, typeColors)}">${row.removed_only ? '(removed only)' : withMount(row.new_light_type, row.new_mount)}</td>
         <td class="center">${row.lumen_setting || '—'}</td>
         <td class="center">${row.hours_flagged ? `${row.hours_start || ''} – ${row.hours_end || ''}` : '—'}</td>
         ${showControls ? `<td>${rowControlsText(area, row.id, kinds) || '—'}</td>` : ''}
@@ -128,7 +160,7 @@ export function generateHTML(job: any, areas: any[]) {
       <title>Scope of Work — ${job?.name || ''}</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 11px; color: #222; padding: 24px; }
+        body { font-family: Arial, sans-serif; font-size: 11px; color: #222; padding: 24px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .header { margin-bottom: 20px; }
         .company { font-size: 18px; font-weight: bold; color: #185FA5; margin-bottom: 4px; }
         .job-title { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 2px; }
@@ -142,8 +174,9 @@ export function generateHTML(job: any, areas: any[]) {
         td.center { text-align: center; }
         td.area-cell { font-weight: 600; color: #185FA5; background: #f4f7fb; border-right: 2px solid #185FA5; }
         td.note { color: #854F0B; font-size: 10px; }
-        tr.even { background: #f9fbff; }
-        tr.odd { background: #ffffff; }
+        .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 14px; font-size: 10px; color: #444; }
+        .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+        .legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
         tr.area-controls td { background: #EEF6F1; color: #085041; font-size: 10px; }
         .totals { display: flex; gap: 24px; margin-bottom: 20px; }
         .total-card { background: #f4f7fb; border: 1px solid #e0e7ef; border-radius: 8px; padding: 10px 16px; }
@@ -177,6 +210,8 @@ export function generateHTML(job: any, areas: any[]) {
         ${kinds.includes('occupancy') ? `<div class="total-card"><div class="total-val">${totalSensors}</div><div class="total-label">Occupancy sensors</div></div>` : ''}
         ${kinds.includes('photocell') ? `<div class="total-card"><div class="total-val">${totalPhotocells}</div><div class="total-label">Photocells</div></div>` : ''}
       </div>
+
+      ${legend.length > 0 ? `<div class="legend">${legend.map(l => `<span class="legend-item"><span class="legend-swatch" style="background: ${l.color}"></span>${l.name}</span>`).join('')}</div>` : ''}
 
       <table>
         <thead>

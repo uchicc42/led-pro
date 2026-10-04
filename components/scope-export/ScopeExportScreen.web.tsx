@@ -2,12 +2,12 @@ import { router } from 'expo-router';
 import { useState, type CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
-import { areaControlsText, generateHTML, rowControlsText, sortedRows, useScopeExport } from './useScopeExport';
+import { areaControlsText, generateHTML, rowColor, rowControlsText, sortedRows, tintOf, useScopeExport, withMount } from './useScopeExport';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses ScopeExportScreen.tsx.
 
 export default function ScopeExportScreen() {
-  const { jobId, job, areas, loading, kinds, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
+  const { jobId, job, areas, loading, kinds, typeColors, legend, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
   const [generating, setGenerating] = useState(false);
 
   function exportPDF() {
@@ -15,7 +15,7 @@ export default function ScopeExportScreen() {
     // Open in a new tab and trigger the browser's print dialog
     const win = window.open('', '_blank');
     if (win) {
-      win.document.write(generateHTML(job, areas));
+      win.document.write(generateHTML(job, areas, typeColors));
       win.document.close();
       win.focus();
       setTimeout(() => { win.print(); }, 500);
@@ -72,6 +72,16 @@ export default function ScopeExportScreen() {
           <div style={webStyles.jobTitle}>{job?.name}</div>
           <div style={webStyles.jobMeta}>{job?.location} · {job?.date && new Date(job.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
 
+          {legend.length > 0 && (
+            <div style={webStyles.legend}>
+              {legend.map(l => (
+                <span key={l.name} style={webStyles.legendItem}>
+                  <span style={{ ...webStyles.legendSwatch, background: l.color }} />{l.name}
+                </span>
+              ))}
+            </div>
+          )}
+
           <table style={webStyles.table}>
             <thead>
               <tr>
@@ -91,12 +101,12 @@ export default function ScopeExportScreen() {
                 const columnCount = kinds.length > 0 ? 9 : 8;
                 return [
                   ...rows.map((row, i) => (
-                  <tr key={`${area.id}-${i}`} style={{ background: i % 2 === 0 ? '#f9fbff' : '#fff' }}>
+                  <tr key={`${area.id}-${i}`} style={{ background: tintOf(rowColor(row, typeColors)) }}>
                     {i === 0 && areaCell}
                     <td style={webStyles.tdQty}>{row.new_addition ? '—' : row.quantity || 0}</td>
-                    <td style={webStyles.td}>{row.new_addition ? '(new addition)' : row.light_type_id || '—'}</td>
+                    <td style={webStyles.td}>{row.new_addition ? '(new addition)' : withMount(row.light_type_id, row.old_mount)}</td>
                     <td style={webStyles.tdQty}>{row.removed_only ? '—' : row.new_quantity || 0}</td>
-                    <td style={webStyles.td}>{row.removed_only ? '(removed only)' : row.new_light_type || '—'}</td>
+                    <td style={{ ...webStyles.td, borderLeft: `4px solid ${rowColor(row, typeColors)}` }}>{row.removed_only ? '(removed only)' : withMount(row.new_light_type, row.new_mount)}</td>
                     <td style={webStyles.tdCenter}>{row.lumen_setting || '—'}</td>
                     <td style={webStyles.tdCenter}>{row.hours_flagged ? `${row.hours_start || ''} – ${row.hours_end || ''}` : '—'}</td>
                     {kinds.length > 0 && <td style={{ ...webStyles.td, fontSize: 12 }}>{rowControlsText(area, row.id, kinds) || '—'}</td>}
@@ -131,6 +141,9 @@ export default function ScopeExportScreen() {
 }
 
 const webStyles: Record<string, CSSProperties> = {
+  legend: { display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginBottom: 14, fontSize: 12, color: Colors.textSecondary },
+  legendItem: { display: 'inline-flex', alignItems: 'center', gap: 6 },
+  legendSwatch: { width: 12, height: 12, borderRadius: 3, display: 'inline-block' },
   tdAreaWide: { padding: '7px 10px', borderBottom: '0.5px solid #e0e7ef', background: '#EEF6F1', color: '#085041', fontSize: 12 },
   page: { minHeight: '100vh', background: Colors.bgSecondary, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', overflowY: 'auto' },
   container: { maxWidth: 1000, margin: '0 auto', padding: '40px 32px 80px' },

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getCurrentUser } from '../../constants/userStore';
+import { ensureLightTypeColors } from '../../constants/lightTypeColors';
 import { supabase } from '../../supabase';
 
 export function useSettings() {
@@ -20,6 +21,9 @@ export function useSettings() {
   const [expandControls, setExpandControls] = useState(false);
   const [newControlName, setNewControlName] = useState('');
   const [newControlKind, setNewControlKind] = useState<'occupancy' | 'photocell'>('occupancy');
+  // Light type being edited (colour, mount options) in the type editor.
+  const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
+  const [newMountOption, setNewMountOption] = useState('');
 
   useEffect(() => {
     loadAll();
@@ -58,7 +62,7 @@ export function useSettings() {
       .select('*')
       .order('category')
       .order('sort_order');
-    if (data) setLightTypes(data);
+    if (data) setLightTypes(await ensureLightTypeColors(data));
   }
 
   async function loadControlTypes() {
@@ -113,8 +117,36 @@ export function useSettings() {
 
   async function deleteLightType(id: string) {
     await supabase.from('light_types').delete().eq('id', id);
+    if (editingTypeId === id) setEditingTypeId(null);
     await loadLightTypes();
   }
+
+  function patchLightType(id: string, patch: Record<string, any>) {
+    setLightTypes(prev => prev.map(t => (t.id === id ? { ...t, ...patch } : t)));
+    return supabase.from('light_types').update(patch).eq('id', id);
+  }
+
+  async function setLightTypeColor(id: string, color: string) {
+    await patchLightType(id, { color });
+  }
+
+  async function addMountOption(id: string) {
+    const option = newMountOption.trim();
+    const type = lightTypes.find(t => t.id === id);
+    if (!option || !type) return;
+    const current: string[] = type.mount_options || [];
+    if (current.some(o => o.toLowerCase() === option.toLowerCase())) return setNewMountOption('');
+    await patchLightType(id, { mount_options: [...current, option] });
+    setNewMountOption('');
+  }
+
+  async function removeMountOption(id: string, option: string) {
+    const type = lightTypes.find(t => t.id === id);
+    if (!type) return;
+    await patchLightType(id, { mount_options: (type.mount_options || []).filter((o: string) => o !== option) });
+  }
+
+  const editingType = lightTypes.find(t => t.id === editingTypeId) ?? null;
 
   const currentTypes = lightTypes.filter(t => t.category === 'current');
   const newTypes = lightTypes.filter(t => t.category === 'new');
@@ -129,5 +161,7 @@ export function useSettings() {
     updateNotificationPref, addLightType, deleteLightType, currentTypes, newTypes,
     controlTypes, expandControls, setExpandControls, newControlName, setNewControlName,
     newControlKind, setNewControlKind, addControlType, deleteControlType, sensorTypes, photocellTypes,
+    editingType, setEditingTypeId, newMountOption, setNewMountOption,
+    setLightTypeColor, addMountOption, removeMountOption,
   };
 }

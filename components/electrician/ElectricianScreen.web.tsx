@@ -4,6 +4,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import AreaPhotos from '../area-photos/AreaPhotos';
 import { CONTROL_LABEL } from '../area-entry/useAreaEntry';
+import { withMount } from '../scope-export/useScopeExport';
 import { getStatusLabel, useElectrician } from './useElectrician';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses ElectricianScreen.tsx.
@@ -94,14 +95,14 @@ export default function ElectricianScreen() {
               lightRows.map((row, i) => (
                 <div key={i} style={webStyles.refRow}>
                   <span style={webStyles.refKey}>
-                    {row.removed_only ? '🗑 Remove:' : row.new_addition ? '➕ Add:' : `${row.quantity} × ${row.light_type_id || '?'} →`}
+                    {row.removed_only ? '🗑 Remove:' : row.new_addition ? '➕ Add:' : `${row.quantity} × ${withMount(row.light_type_id, row.old_mount)} →`}
                   </span>
                   <span style={webStyles.refVal}>
                     {row.removed_only
-                      ? `${row.quantity} × ${row.light_type_id || '?'} (no replacement)`
+                      ? `${row.quantity} × ${withMount(row.light_type_id, row.old_mount)} (no replacement)`
                       : row.new_addition
-                      ? `${row.new_quantity} × ${row.new_light_type || '?'}`
-                      : `${row.new_quantity} × ${row.new_light_type || '?'}`
+                      ? `${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
+                      : `${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
                     }
                   </span>
                 </div>
@@ -129,10 +130,10 @@ export default function ElectricianScreen() {
                     <div>
                       <div style={webStyles.installType}>
                         {row.new_addition
-                          ? `➕ New: ${row.new_quantity} × ${row.new_light_type || '?'}`
+                          ? `➕ New: ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
                           : row.removed_only
-                          ? `🗑 Remove: ${row.quantity} × ${row.light_type_id || '?'}`
-                          : `${row.quantity} × ${row.light_type_id || '?'} → ${row.new_quantity} × ${row.new_light_type || '?'}`
+                          ? `🗑 Remove: ${row.quantity} × ${withMount(row.light_type_id, row.old_mount)}`
+                          : `${row.quantity} × ${withMount(row.light_type_id, row.old_mount)} → ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
                         }
                       </div>
                       <div style={webStyles.installQty}>

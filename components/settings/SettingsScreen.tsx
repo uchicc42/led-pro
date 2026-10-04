@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Switch,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { LIGHT_TYPE_PALETTE } from '../../constants/lightTypeColors';
 import { registerForPushNotifications } from '../../constants/notifications';
 import { clearCurrentUser, getCurrentUser } from '../../constants/userStore';
 import { useSettings } from './useSettings';
@@ -27,7 +29,19 @@ export default function SettingsScreen() {
     updateNotificationPref, addLightType, deleteLightType, currentTypes, newTypes,
     expandControls, setExpandControls, newControlName, setNewControlName,
     newControlKind, setNewControlKind, addControlType, deleteControlType, sensorTypes, photocellTypes,
+    editingType, setEditingTypeId, newMountOption, setNewMountOption,
+    setLightTypeColor, addMountOption, removeMountOption,
   } = useSettings();
+
+  const lightTypeTag = (t: any) => (
+    <TouchableOpacity key={t.id} style={styles.tag} onPress={() => { setNewMountOption(''); setEditingTypeId(t.id); }}>
+      <View style={styles.tagInner}>
+        {t.category === 'new' && <View style={[styles.swatchDot, { backgroundColor: t.color || '#ccc' }]} />}
+        <Text style={styles.tagText}>{t.name}</Text>
+        {(t.mount_options || []).length > 0 && <Text style={styles.tagMeta}>· {t.mount_options.length} mounts</Text>}
+      </View>
+    </TouchableOpacity>
+  );
 
   function confirmDelete(id: string, name: string, remove: (id: string) => void = deleteLightType) {
     Alert.alert('Remove type', `Remove "${name}" from the list?`, [
@@ -69,30 +83,15 @@ export default function SettingsScreen() {
 
         {expandLights && (
           <View style={styles.expandPanel}>
+            <Text style={styles.editHint}>Tap a type to set its colour, mount options, or remove it.</Text>
             <Text style={styles.typeGroupLabel}>Current lights</Text>
             <View style={styles.tagWrap}>
-              {currentTypes.map(t => (
-                <TouchableOpacity
-                  key={t.id}
-                  style={styles.tag}
-                  onPress={() => confirmDelete(t.id, t.name)}
-                >
-                  <Text style={styles.tagText}>{t.name} ✕</Text>
-                </TouchableOpacity>
-              ))}
+              {currentTypes.map(lightTypeTag)}
             </View>
 
             <Text style={[styles.typeGroupLabel, { marginTop: 14 }]}>New LED lights</Text>
             <View style={styles.tagWrap}>
-              {newTypes.map(t => (
-                <TouchableOpacity
-                  key={t.id}
-                  style={styles.tag}
-                  onPress={() => confirmDelete(t.id, t.name)}
-                >
-                  <Text style={styles.tagText}>{t.name} ✕</Text>
-                </TouchableOpacity>
-              ))}
+              {newTypes.map(lightTypeTag)}
             </View>
 
             <View style={styles.addTypeRow}>
@@ -274,11 +273,87 @@ export default function SettingsScreen() {
         <Text style={styles.version}>LED Pro · v1.0.0</Text>
 
       </ScrollView>
+
+      <Modal visible={!!editingType} transparent animationType="slide" onRequestClose={() => setEditingTypeId(null)}>
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setEditingTypeId(null)} />
+          {editingType && (
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{editingType.name}</Text>
+                <TouchableOpacity onPress={() => setEditingTypeId(null)}>
+                  <Text style={styles.modalDone}>Done</Text>
+                </TouchableOpacity>
+              </View>
+
+              {editingType.category === 'new' && (
+                <>
+                  <Text style={styles.typeGroupLabel}>Scope colour</Text>
+                  <View style={styles.swatchGrid}>
+                    {LIGHT_TYPE_PALETTE.map(c => (
+                      <TouchableOpacity
+                        key={c}
+                        style={[styles.swatch, { backgroundColor: c }, editingType.color === c && styles.swatchActive]}
+                        onPress={() => setLightTypeColor(editingType.id, c)}
+                        accessibilityLabel={`Colour ${c}`}
+                      />
+                    ))}
+                  </View>
+                </>
+              )}
+
+              <Text style={[styles.typeGroupLabel, { marginTop: 14 }]}>Mount options</Text>
+              <Text style={styles.editHint}>
+                If this type has mount options, picking it in area entry requires choosing one.
+              </Text>
+              <View style={styles.tagWrap}>
+                {(editingType.mount_options || []).map((o: string) => (
+                  <TouchableOpacity key={o} style={styles.tag} onPress={() => removeMountOption(editingType.id, o)}>
+                    <Text style={styles.tagText}>{o} ✕</Text>
+                  </TouchableOpacity>
+                ))}
+                {(editingType.mount_options || []).length === 0 && <Text style={styles.tagMeta}>None — no mount required.</Text>}
+              </View>
+              <View style={styles.addTypeRow}>
+                <TextInput
+                  style={styles.addTypeInput}
+                  placeholder="e.g. Recessed, Surface, Pendant"
+                  placeholderTextColor={Colors.textTertiary}
+                  value={newMountOption}
+                  onChangeText={setNewMountOption}
+                  onSubmitEditing={() => addMountOption(editingType.id)}
+                />
+                <TouchableOpacity style={styles.addTypeBtn} onPress={() => addMountOption(editingType.id)}>
+                  <Text style={styles.addTypeBtnText}>Add</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.deleteTypeBtn} onPress={() => confirmDelete(editingType.id, editingType.name)}>
+                <Text style={styles.deleteTypeText}>Remove this light type</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  tagInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  tagMeta: { fontSize: 11, color: Colors.textTertiary },
+  swatchDot: { width: 10, height: 10, borderRadius: 5 },
+  editHint: { fontSize: 11, color: Colors.textTertiary, marginBottom: 10 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  modalTitle: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary, flex: 1 },
+  modalDone: { fontSize: 15, color: Colors.blue, fontWeight: '500' },
+  swatchGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  swatch: { width: 40, height: 40, borderRadius: 20 },
+  swatchActive: { borderWidth: 3, borderColor: Colors.textPrimary },
+  deleteTypeBtn: { marginTop: 20, paddingVertical: 12, alignItems: 'center' },
+  deleteTypeText: { fontSize: 14, color: '#A32D2D' },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: Colors.borderLight },
   toggleLabel: { fontSize: 13, color: Colors.textPrimary },
   container: { flex: 1, backgroundColor: Colors.bgSecondary },

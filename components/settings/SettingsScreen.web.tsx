@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import type { CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { LIGHT_TYPE_PALETTE } from '../../constants/lightTypeColors';
 import { clearCurrentUser } from '../../constants/userStore';
 import { useSettings } from './useSettings';
 
@@ -16,7 +17,24 @@ export default function SettingsScreen() {
     updateNotificationPref, addLightType, deleteLightType, currentTypes, newTypes,
     expandControls, setExpandControls, newControlName, setNewControlName,
     newControlKind, setNewControlKind, addControlType, deleteControlType, sensorTypes, photocellTypes,
+    editingType, setEditingTypeId, newMountOption, setNewMountOption,
+    setLightTypeColor, addMountOption, removeMountOption,
   } = useSettings();
+
+  const lightTypeTag = (t: any) => (
+    <div key={t.id} style={webStyles.tag}>
+      <span
+        style={webStyles.tagName}
+        onClick={() => { setNewMountOption(''); setEditingTypeId(t.id); }}
+        title="Edit colour and mount options"
+      >
+        {t.category === 'new' && <span style={{ ...webStyles.swatchDot, background: t.color || '#ccc' }} />}
+        {t.name}
+        {(t.mount_options || []).length > 0 && <span style={webStyles.tagMeta}>· {t.mount_options.length} mounts</span>}
+      </span>
+      <span style={webStyles.tagDel} onClick={() => confirmDelete(t.id, t.name)}>✕</span>
+    </div>
+  );
 
   function confirmDelete(id: string, name: string, remove: (id: string) => void = deleteLightType) {
     if (window.confirm(`Remove "${name}" from the list?`)) {
@@ -62,32 +80,18 @@ export default function SettingsScreen() {
           {expandLights && (
             <div style={webStyles.expandPanel}>
 
+              <div style={webStyles.editHint}>Click a type to set its colour and mount options.</div>
+
               {/* Current types */}
               <div style={webStyles.typeGroupLabel}>Current lights</div>
               <div style={webStyles.tagWrap}>
-                {currentTypes.map(t => (
-                  <div key={t.id} style={webStyles.tag}>
-                    {t.name}
-                    <span
-                      style={webStyles.tagDel}
-                      onClick={() => confirmDelete(t.id, t.name)}
-                    >✕</span>
-                  </div>
-                ))}
+                {currentTypes.map(lightTypeTag)}
               </div>
 
               {/* New types */}
               <div style={{ ...webStyles.typeGroupLabel, marginTop: 16 }}>New LED lights</div>
               <div style={webStyles.tagWrap}>
-                {newTypes.map(t => (
-                  <div key={t.id} style={webStyles.tag}>
-                    {t.name}
-                    <span
-                      style={webStyles.tagDel}
-                      onClick={() => confirmDelete(t.id, t.name)}
-                    >✕</span>
-                  </div>
-                ))}
+                {newTypes.map(lightTypeTag)}
               </div>
 
               {/* Add new type */}
@@ -312,11 +316,72 @@ export default function SettingsScreen() {
 
         <div style={webStyles.version}>LED Pro · v1.0.0</div>
       </div>
+
+      {editingType && (
+        <div style={webStyles.modalOverlay} onClick={() => setEditingTypeId(null)}>
+          <div style={webStyles.modalCard} onClick={e => e.stopPropagation()}>
+            <div style={webStyles.modalHeader}>
+              <div style={webStyles.modalTitle}>{editingType.name}</div>
+              <button style={webStyles.modalDone} onClick={() => setEditingTypeId(null)}>Done</button>
+            </div>
+
+            {editingType.category === 'new' && (
+              <>
+                <div style={webStyles.typeGroupLabel}>Scope colour</div>
+                <div style={webStyles.swatchGrid}>
+                  {LIGHT_TYPE_PALETTE.map(c => (
+                    <div
+                      key={c}
+                      title={c}
+                      style={{ ...webStyles.swatch, background: c, ...(editingType.color === c ? webStyles.swatchActive : {}) }}
+                      onClick={() => setLightTypeColor(editingType.id, c)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div style={{ ...webStyles.typeGroupLabel, marginTop: 18 }}>Mount options</div>
+            <div style={webStyles.editHint}>If this type has mount options, picking it in area entry requires choosing one.</div>
+            <div style={webStyles.tagWrap}>
+              {(editingType.mount_options || []).map((o: string) => (
+                <div key={o} style={webStyles.tag}>
+                  {o}
+                  <span style={webStyles.tagDel} onClick={() => removeMountOption(editingType.id, o)}>✕</span>
+                </div>
+              ))}
+              {(editingType.mount_options || []).length === 0 && <span style={webStyles.tagMeta}>None — no mount required.</span>}
+            </div>
+            <div style={webStyles.addTypeRow}>
+              <input
+                style={webStyles.addTypeInput}
+                placeholder="e.g. Recessed, Surface, Pendant"
+                value={newMountOption}
+                onChange={e => setNewMountOption(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addMountOption(editingType.id); }}
+              />
+              <button style={webStyles.addTypeBtn} onClick={() => addMountOption(editingType.id)}>Add</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 const webStyles: Record<string, CSSProperties> = {
+  tagName: { display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' },
+  tagMeta: { fontSize: 11, color: Colors.textTertiary },
+  swatchDot: { width: 10, height: 10, borderRadius: 5, display: 'inline-block' },
+  editHint: { fontSize: 12, color: Colors.textTertiary, marginBottom: 12 },
+  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  modalCard: { background: '#fff', borderRadius: 16, width: 460, maxWidth: 'calc(100vw - 32px)', padding: '20px 24px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
+  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  modalTitle: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
+  modalDone: { background: 'none', border: 'none', color: Colors.blue, fontSize: 14, fontWeight: '500', cursor: 'pointer' },
+  swatchGrid: { display: 'flex', flexWrap: 'wrap', gap: 10 },
+  swatch: { width: 32, height: 32, borderRadius: 16, cursor: 'pointer', borderWidth: 3, borderStyle: 'solid', borderColor: 'transparent' },
+  swatchActive: { borderColor: Colors.textPrimary },
   page: { minHeight: '100vh', background: Colors.bgSecondary, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', overflowY: 'auto' },
   container: { maxWidth: 700, margin: '0 auto', padding: '40px 32px 80px' },
   header: { display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 },

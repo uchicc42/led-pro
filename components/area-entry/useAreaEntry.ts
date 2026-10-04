@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { ensureLightTypeColors } from '../../constants/lightTypeColors';
 import { logChange } from '../../constants/notifications';
 import { getCurrentUser } from '../../constants/userStore';
 import { supabase } from '../../supabase';
@@ -20,6 +21,8 @@ export type LightRow = {
   oldType: string;
   newQty: string;
   newType: string;
+  oldMount: string;
+  newMount: string;
   lumenSetting: string;
   hoursOn: boolean;
   hoursStart: string;
@@ -36,6 +39,7 @@ export type RowField = Exclude<keyof LightRow, 'controls'>;
 // What the type picker is choosing for; screens resolve it to a title, options and a setter.
 export type PickerTarget =
   | { scope: 'row'; rowIndex: number; field: 'oldType' | 'newType' }
+  | { scope: 'mount'; rowIndex: number; side: 'old' | 'new' }
   | { scope: 'rowControl'; rowIndex: number; kind: ControlKind }
   | { scope: 'areaControl'; key: string; kind: ControlKind };
 
@@ -48,6 +52,7 @@ const emptyRow = (): LightRow => ({
   id: null,
   oldQty: '', oldType: '',
   newQty: '', newType: '',
+  oldMount: '', newMount: '',
   lumenSetting: '',
   hoursOn: false, hoursStart: '06:00', hoursEnd: '18:00',
   removedOnly: false,
@@ -64,6 +69,8 @@ export function useAreaEntry() {
   const [notes, setNotes] = useState('');
   const [isComplete, setIsComplete] = useState(false);
   const [lightTypes, setLightTypes] = useState<{ current: string[]; new: string[] }>({ current: [], new: [] });
+  // Per light type name: required mount options and scope colour.
+  const [typeInfo, setTypeInfo] = useState<Record<string, { mounts: string[]; color: string | null }>>({});
   const [controlTypes, setControlTypes] = useState<Record<ControlKind, string[]>>({ occupancy: [], photocell: [] });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -96,8 +103,12 @@ export function useAreaEntry() {
   }
 
   async function loadLightTypes() {
-    const { data } = await supabase.from('light_types').select('*').order('sort_order');
-    if (data) {
+    const { data: raw } = await supabase.from('light_types').select('*').order('sort_order');
+    if (raw) {
+      const data = await ensureLightTypeColors(raw);
+      const info: Record<string, { mounts: string[]; color: string | null }> = {};
+      data.forEach((t: any) => { info[t.name] = { mounts: t.mount_options || [], color: t.color }; });
+      setTypeInfo(info);
       setLightTypes({
         current: data.filter((t: any) => t.category === 'current').map((t: any) => t.name),
         new: data.filter((t: any) => t.category === 'new').map((t: any) => t.name),
@@ -131,6 +142,8 @@ export function useAreaEntry() {
         oldType: r.light_type_id || '',
         newQty: String(r.new_quantity || ''),
         newType: r.new_light_type || '',
+        oldMount: r.old_mount || '',
+        newMount: r.new_mount || '',
         lumenSetting: r.lumen_setting || '',
         hoursOn: r.hours_flagged || false,
         hoursStart: r.hours_start || '06:00',
@@ -154,7 +167,23 @@ export function useAreaEntry() {
   // Switching a kind off hides it without deleting anything already entered.
   const enabledKinds = CONTROL_KINDS.filter(k => (k === 'occupancy' ? job?.col_sensor : job?.col_photocell));
 
+  const mountOptionsFor = (typeName: string) => typeInfo[typeName]?.mounts ?? [];
+  const colorFor = (typeName: string) => typeInfo[typeName]?.color ?? null;
+
+  // A mount is required when the side is in use and its light type has mount options.
+  function missingMount(r: LightRow): string | null {
+    if (!r.newAddition && r.oldType && mountOptionsFor(r.oldType).length > 0 && !r.oldMount) return r.oldType;
+    if (!r.removedOnly && r.newType && mountOptionsFor(r.newType).length > 0 && !r.newMount) return r.newType;
+    return null;
+  }
+
   async function save(markComplete = false) {
+    const missingIndex = rows.findIndex(r => missingMount(r));
+    if (missingIndex >= 0) {
+      setSaveError(`Row ${missingIndex + 1}: choose a mount type for ${missingMount(rows[missingIndex])}.`);
+      return;
+    }
+
     setSaving(true);
     setSaveError('');
     const failed = (message: string) => {
@@ -175,6 +204,8 @@ export function useAreaEntry() {
       light_type_id: r.oldType || null,
       new_quantity: parseInt(r.newQty) || 0,
       new_light_type: r.newType || null,
+      old_mount: r.oldType && mountOptionsFor(r.oldType).length > 0 ? r.oldMount || null : null,
+      new_mount: r.newType && mountOptionsFor(r.newType).length > 0 ? r.newMount || null : null,
       lumen_setting: r.lumenSetting || null,
       hours_flagged: r.hoursOn,
       hours_start: r.hoursOn ? r.hoursStart : null,
@@ -326,6 +357,9 @@ export function useAreaEntry() {
   function updateRow<K extends RowField>(index: number, field: K, value: LightRow[K]) {
     const updated = [...rows];
     updated[index] = { ...updated[index], [field]: value };
+    // Changing a light type clears a mount that isn't an option for the new type.
+    if (field === 'oldType' && !mountOptionsFor(String(value)).includes(updated[index].oldMount)) updated[index].oldMount = '';
+    if (field === 'newType' && !mountOptionsFor(String(value)).includes(updated[index].newMount)) updated[index].newMount = '';
     if (field === 'removedOnly' && value) updated[index].newAddition = false;
     if (field === 'newAddition' && value) updated[index].removedOnly = false;
     setRows(updated);
@@ -359,6 +393,15 @@ export function useAreaEntry() {
         select: (item: string) => updateRow(target.rowIndex, target.field, item),
       };
     }
+    if (target.scope === 'mount') {
+      const row = rows[target.rowIndex];
+      const typeName = target.side === 'old' ? row.oldType : row.newType;
+      return {
+        title: `Mount type — ${typeName}`,
+        options: mountOptionsFor(typeName),
+        select: (item: string) => updateRow(target.rowIndex, target.side === 'old' ? 'oldMount' : 'newMount', item),
+      };
+    }
     if (target.scope === 'rowControl') {
       return {
         title: `${CONTROL_LABEL[target.kind]} type`,
@@ -381,7 +424,7 @@ export function useAreaEntry() {
     areaId, jobId, area, job, rows, notes, setNotes, isComplete, lightTypes, saving, saveError, loading,
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
-    describePicker, backToAreaList, layoutCanvasHref,
+    describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor,
   };
 }
 

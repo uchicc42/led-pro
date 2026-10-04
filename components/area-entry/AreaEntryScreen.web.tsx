@@ -99,7 +99,7 @@ export default function AreaEntryScreen() {
     areaId, jobId, area, job, rows, notes, setNotes, isComplete, saving, saveError, loading,
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
-    describePicker, backToAreaList, layoutCanvasHref,
+    describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor,
   } = useAreaEntry();
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const picker = pickerTarget ? describePicker(pickerTarget) : null;
@@ -176,6 +176,16 @@ export default function AreaEntryScreen() {
                   {row.oldType || 'Select...'}
                 </div>
 
+                {mountOptionsFor(row.oldType).length > 0 && (
+                  <div
+                    style={{ ...webStyles.mountBtn, ...(!row.oldMount ? webStyles.mountBtnMissing : {}) }}
+                    onClick={() => setPickerTarget({ scope: 'mount', rowIndex: i, side: 'old' })}
+                    title="Mount type"
+                  >
+                    {row.oldMount || 'Mount *'}
+                  </div>
+                )}
+
                 <div style={webStyles.arrow}>→</div>
 
                 {/* New qty */}
@@ -202,8 +212,19 @@ export default function AreaEntryScreen() {
                     setPickerTarget({ scope: 'row', rowIndex: i, field: 'newType' });
                   }}
                 >
+                  {!!colorFor(row.newType) && <span style={{ ...webStyles.colorDot, background: colorFor(row.newType)! }} />}
                   {row.newType || 'Select...'}
                 </div>
+
+                {mountOptionsFor(row.newType).length > 0 && (
+                  <div
+                    style={{ ...webStyles.mountBtn, ...(!row.newMount ? webStyles.mountBtnMissing : {}) }}
+                    onClick={() => setPickerTarget({ scope: 'mount', rowIndex: i, side: 'new' })}
+                    title="Mount type"
+                  >
+                    {row.newMount || 'Mount *'}
+                  </div>
+                )}
 
                 {/* Hours flag */}
                 {job?.col_hours && (
@@ -380,6 +401,9 @@ const webStyles: Record<string, CSSProperties> = {
   controlLine: { display: 'flex', alignItems: 'center', gap: 8 },
   controlLabel: { width: 70, fontSize: 11, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' },
   areaControlsHint: { fontSize: 12, color: Colors.textTertiary, marginBottom: 4 },
+  mountBtn: { padding: '8px 8px', fontSize: 12, borderWidth: 0.5, borderStyle: 'solid', borderColor: '#e0e7ef', borderRadius: 8, cursor: 'pointer', background: '#fff', whiteSpace: 'nowrap', flexShrink: 0, maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis' },
+  mountBtnMissing: { borderColor: '#EF9F27', background: '#FAEEDA', color: '#854F0B' },
+  colorDot: { display: 'inline-block', width: 9, height: 9, borderRadius: 5, marginRight: 6, verticalAlign: 'middle' },
   saveError: { color: '#A32D2D', fontSize: 13, marginTop: 16 },
   actionRow: { display: 'flex', gap: 10, marginTop: 20 },
   saveBtn: { flex: 1, padding: '13px', background: Colors.blue, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: '500', cursor: 'pointer' },
