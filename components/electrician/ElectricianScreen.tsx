@@ -205,6 +205,13 @@ export default function ElectricianScreen() {
           </View>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={[styles.layoutBtn, { borderColor: '#D08A6E' }]}
+          onPress={() => router.push(`/job-issues?jobId=${jobId}&areaId=${areaId}` as any)}
+        >
+          <Text style={[styles.layoutBtnText, { color: '#712B13' }]}>⚠️ Log an issue (bad light, change…)</Text>
+        </TouchableOpacity>
+
         {job?.col_layout && (
           <TouchableOpacity
             style={styles.layoutBtn}

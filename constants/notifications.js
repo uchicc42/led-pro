@@ -109,6 +109,12 @@ export async function notifyJobNote(jobName, triggeredByUserId) {
   await sendPushNotification(tokens, '📝 New job note', `A note was added to ${jobName}`);
 }
 
+// Issues reuse the job-notes preference: both are "someone wrote something about this job".
+export async function notifyJobIssue(jobName, categoryLabel, triggeredByUserId) {
+  const tokens = await getNotificationRecipients('notify_job_notes', triggeredByUserId);
+  await sendPushNotification(tokens, '⚠️ New issue logged', `${categoryLabel} reported on ${jobName}`);
+}
+
 // Log a change to the change_log table
 export async function logChange(areaId, jobId, userId, userName, changeType, description) {
   try {

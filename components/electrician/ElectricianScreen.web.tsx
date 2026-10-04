@@ -243,6 +243,14 @@ export default function ElectricianScreen() {
             </div>
           </div>
 
+          <div style={webStyles.divider} />
+          <button
+            style={{ ...webStyles.layoutBtn, color: '#712B13', border: '0.5px dashed #D08A6E' }}
+            onClick={() => router.push(`/job-issues?jobId=${jobId}&areaId=${areaId}` as any)}
+          >
+            ⚠️ Log an issue (bad light, change…)
+          </button>
+
           {/* Layout link */}
           {job?.col_layout && (
             <>

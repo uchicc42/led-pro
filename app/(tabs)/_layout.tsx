@@ -18,6 +18,7 @@ export default function TabLayout() {
       <Tabs.Screen name="scope-export" />
       <Tabs.Screen name="change-log" />
       <Tabs.Screen name="job-settings" />
+      <Tabs.Screen name="job-issues" />
     </Tabs>
   );
 }

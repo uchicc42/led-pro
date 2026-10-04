@@ -21,7 +21,7 @@ export default function AreaListScreen() {
   const {
     jobId, job, loading, addingArea, setAddingArea, newAreaName, setNewAreaName,
     filter, setFilter, jobNotes, notesSaved, saveJobNotes, addArea, toggleComplete, deleteArea,
-    getFilteredAreas, completed, total, progress,
+    getFilteredAreas, completed, total, progress, openIssues,
   } = useAreaList({ live: 'poll', initialUser: readStoredSession });
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const isElectrician = readStoredSession()?.role === 'electrician';
@@ -174,6 +174,19 @@ export default function AreaListScreen() {
             </div>
           )}
         </div>
+
+        <button
+          style={{
+            ...webStyles.addBtn,
+            background: openIssues > 0 ? '#FAECE7' : '#fff',
+            color: openIssues > 0 ? '#712B13' : Colors.textSecondary,
+            border: `1px solid ${openIssues > 0 ? '#D08A6E' : '#e0e7ef'}`,
+            marginBottom: 16,
+          }}
+          onClick={() => router.push(`/job-issues?jobId=${jobId}` as any)}
+        >
+          ⚠️ Issue log{openIssues > 0 ? ` · ${openIssues} open` : ''}
+        </button>
 
         {/* Job notes */}
         <div style={{ marginBottom: 16 }}>

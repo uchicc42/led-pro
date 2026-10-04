@@ -19,7 +19,7 @@ export default function AreaListScreen() {
   const {
     jobId, job, loading, addingArea, setAddingArea, newAreaName, setNewAreaName,
     filter, setFilter, jobNotes, notesSaved, saveJobNotes, addArea, toggleComplete, deleteArea,
-    getFilteredAreas, completed, total, progress,
+    getFilteredAreas, completed, total, progress, openIssues,
   } = useAreaList({ live: 'realtime' });
   // The role check reads the web session store, which doesn't exist on native, so this was always false here.
   const isElectrician = false;
@@ -181,6 +181,15 @@ export default function AreaListScreen() {
             onChangeText={saveJobNotes}
           />
         </View>
+
+        <TouchableOpacity
+          style={[styles.addBtn, { backgroundColor: openIssues > 0 ? '#FAECE7' : '#fff', borderStyle: 'solid', borderColor: openIssues > 0 ? '#D08A6E' : '#c0cfe0', marginBottom: 8 }]}
+          onPress={() => router.push(`/job-issues?jobId=${jobId}` as any)}
+        >
+          <Text style={[styles.addBtnText, { color: openIssues > 0 ? '#712B13' : Colors.textSecondary }]}>
+            ⚠️ Issue log{openIssues > 0 ? ` · ${openIssues} open` : ''}
+          </Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: '#fff', borderStyle: 'solid', marginBottom: 8 }]}

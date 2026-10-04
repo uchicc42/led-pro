@@ -21,6 +21,7 @@ export function useAreaList({ live, initialUser }: Options) {
   const [currentUser, setCurrentUser_state] = useState<any>(() => initialUser?.() ?? null);
   const [jobNotes, setJobNotes] = useState('');
   const [notesSaved, setNotesSaved] = useState(false);
+  const [openIssues, setOpenIssues] = useState(0);
   const notesTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
@@ -45,8 +46,18 @@ export function useAreaList({ live, initialUser }: Options) {
   useFocusEffect(
     useCallback(() => {
       loadAreas();
+      loadOpenIssues();
     }, [jobId])
   );
+
+  async function loadOpenIssues() {
+    const { count } = await supabase
+      .from('job_issues')
+      .select('id', { count: 'exact', head: true })
+      .eq('job_id', jobId)
+      .eq('status', 'open');
+    setOpenIssues(count ?? 0);
+  }
 
   async function loadCurrentUser() {
     const user = await getCurrentUser();
@@ -156,6 +167,6 @@ export function useAreaList({ live, initialUser }: Options) {
   return {
     jobId, job, loading, addingArea, setAddingArea, newAreaName, setNewAreaName,
     filter, setFilter, jobNotes, notesSaved, saveJobNotes, addArea, toggleComplete, deleteArea,
-    getFilteredAreas, completed, total, progress,
+    getFilteredAreas, completed, total, progress, openIssues,
   };
 }
