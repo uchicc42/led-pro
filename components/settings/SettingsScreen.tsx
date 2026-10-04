@@ -2,7 +2,9 @@ import { router } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   StyleSheet,
   Switch,
   Text,
@@ -277,6 +279,8 @@ export default function SettingsScreen() {
       <Modal visible={!!editingType} transparent animationType="slide" onRequestClose={() => setEditingTypeId(null)}>
         <View style={styles.modalOverlay}>
           <TouchableOpacity style={{ flex: 1 }} onPress={() => setEditingTypeId(null)} />
+          {/* Lift the sheet above the keyboard while typing a mount option (same approach as the area-entry picker). */}
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'position' : 'height'}>
           {editingType && (
             <View style={styles.modalSheet}>
               <View style={styles.modalHeader}>
@@ -322,6 +326,9 @@ export default function SettingsScreen() {
                   value={newMountOption}
                   onChangeText={setNewMountOption}
                   onSubmitEditing={() => addMountOption(editingType.id)}
+                  // Keep the keyboard up so several options can be added in a row.
+                  submitBehavior="submit"
+                  returnKeyType="done"
                 />
                 <TouchableOpacity style={styles.addTypeBtn} onPress={() => addMountOption(editingType.id)}>
                   <Text style={styles.addTypeBtnText}>Add</Text>
@@ -333,6 +340,7 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           )}
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </SafeAreaView>
