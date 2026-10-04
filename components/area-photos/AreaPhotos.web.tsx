@@ -5,13 +5,29 @@ import { AreaPhoto, useAreaPhotos } from './useAreaPhotos';
 // Web photo grid for an area. The native version lives in AreaPhotos.tsx.
 
 export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?: string }) {
-  const { photos, uploading, error, choosePhoto, deletePhoto } = useAreaPhotos(areaId, jobId);
-  const [viewing, setViewing] = useState<AreaPhoto | null>(null);
+  const { photos, uploading, error, choosePhoto, deletePhoto, saveNote } = useAreaPhotos(areaId, jobId);
+  // Tracked by id so the lightbox always shows the latest saved note.
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const viewing = photos.find(p => p.id === viewingId) ?? null;
+
+  function open(photo: AreaPhoto) {
+    setViewingId(photo.id);
+    setNoteDraft(photo.note ?? '');
+  }
+
+  const noteChanged = !!viewing && noteDraft.trim() !== (viewing.note ?? '').trim();
+
+  function close() {
+    // Closing keeps a typed note rather than silently throwing it away.
+    if (viewing && noteChanged) saveNote(viewing, noteDraft.trim());
+    setViewingId(null);
+  }
 
   async function confirmDelete(photo: AreaPhoto) {
     if (!window.confirm('Remove this photo from the area?')) return;
-    await deletePhoto(photo);
-    setViewing(null);
+    deletePhoto(photo);
+    setViewingId(null);
   }
 
   return (
@@ -32,7 +48,10 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
       {photos.length > 0 ? (
         <div style={webStyles.grid}>
           {photos.map(p => (
-            <img key={p.id} src={p.url} alt="Area photo" style={webStyles.thumb} onClick={() => setViewing(p)} />
+            <div key={p.id} style={webStyles.thumbWrap} onClick={() => open(p)} title={p.note || undefined}>
+              <img src={p.url} alt={p.note || 'Area photo'} style={webStyles.thumb} />
+              {p.note && <span style={webStyles.noteBadge}>📝</span>}
+            </div>
           ))}
         </div>
       ) : (
@@ -40,9 +59,21 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
       )}
 
       {viewing && (
-        <div style={webStyles.overlay} onClick={() => setViewing(null)}>
+        <div style={webStyles.overlay} onClick={close}>
           <div style={webStyles.viewer} onClick={e => e.stopPropagation()}>
-            <img src={viewing.url} alt="Area photo" style={webStyles.viewerImage} />
+            <img src={viewing.url} alt={viewing.note || 'Area photo'} style={webStyles.viewerImage} />
+            <div style={webStyles.noteRow}>
+              <textarea
+                style={webStyles.noteInput}
+                rows={2}
+                placeholder="Add a note…"
+                value={noteDraft}
+                onChange={e => setNoteDraft(e.target.value)}
+              />
+              {noteChanged && (
+                <button style={webStyles.saveNoteBtn} onClick={() => saveNote(viewing, noteDraft.trim())}>Save note</button>
+              )}
+            </div>
             <div style={webStyles.viewerBar}>
               <span style={webStyles.viewerMeta}>
                 {viewing.taken_by_name ? `${viewing.taken_by_name} · ` : ''}
@@ -50,7 +81,7 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
               </span>
               <a href={viewing.url} target="_blank" rel="noreferrer" style={webStyles.viewerLink}>Open full size</a>
               <button style={webStyles.deleteBtn} onClick={() => confirmDelete(viewing)}>Delete</button>
-              <button style={webStyles.closeBtn} onClick={() => setViewing(null)}>Close</button>
+              <button style={webStyles.closeBtn} onClick={close}>Close</button>
             </div>
           </div>
         </div>
@@ -60,6 +91,11 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
 }
 
 const webStyles: Record<string, CSSProperties> = {
+  thumbWrap: { position: 'relative', cursor: 'pointer' },
+  noteBadge: { position: 'absolute', left: 4, bottom: 4, background: 'rgba(0,0,0,0.55)', borderRadius: 10, padding: '0 5px', fontSize: 11 },
+  noteRow: { display: 'flex', gap: 8, alignItems: 'flex-end' },
+  noteInput: { flex: 1, padding: '8px 10px', fontSize: 14, borderRadius: 8, border: 'none', outline: 'none', fontFamily: 'inherit', resize: 'vertical', background: 'rgba(255,255,255,0.92)' },
+  saveNoteBtn: { padding: '8px 14px', background: Colors.blue, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: '500' },
   block: { marginBottom: 16 },
   headerRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   label: { fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em' },

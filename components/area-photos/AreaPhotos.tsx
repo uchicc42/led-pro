@@ -8,8 +8,18 @@ import { AreaPhoto, useAreaPhotos } from './useAreaPhotos';
 // Native photo strip for an area. The web version lives in AreaPhotos.web.tsx.
 
 export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?: string }) {
-  const { photos, uploading, error, takePhoto, choosePhoto, deletePhoto } = useAreaPhotos(areaId, jobId);
-  const [viewing, setViewing] = useState<AreaPhoto | null>(null);
+  const { photos, uploading, error, takePhoto, choosePhoto, deletePhoto, saveNote } = useAreaPhotos(areaId, jobId);
+  // Tracked by id so the viewer always shows the latest saved note.
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [focusNote, setFocusNote] = useState(false);
+  const viewing = photos.find(p => p.id === viewingId) ?? null;
+  const setViewing = (p: AreaPhoto | null) => { setViewingId(p?.id ?? null); setFocusNote(false); };
+
+  // After taking a photo, open it straight away so a note can be added (or skipped).
+  async function takeAndDescribe() {
+    const id = await takePhoto();
+    if (id) { setViewingId(id); setFocusNote(true); }
+  }
 
   function confirmDelete(photo: AreaPhoto) {
     Alert.alert('Delete photo', 'Remove this photo from the area?', [
@@ -26,7 +36,7 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
       </View>
 
       <View style={styles.buttonRow}>
-        <TouchableOpacity style={[styles.primaryBtn, uploading && { opacity: 0.6 }]} onPress={takePhoto} disabled={uploading}>
+        <TouchableOpacity style={[styles.primaryBtn, uploading && { opacity: 0.6 }]} onPress={takeAndDescribe} disabled={uploading}>
           <Text style={styles.primaryBtnText}>📷 Take photo</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.secondaryBtn, uploading && { opacity: 0.6 }]} onPress={choosePhoto} disabled={uploading}>
@@ -48,6 +58,11 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
             <TouchableOpacity key={p.id} onPress={() => setViewing(p)} accessibilityLabel="View photo">
               <View>
                 <Image source={{ uri: p.url }} style={styles.thumb} contentFit="cover" transition={150} />
+                {!!p.note && (
+                  <View style={styles.noteBadge} accessibilityLabel="Has a note">
+                    <Text style={styles.pendingText}>📝</Text>
+                  </View>
+                )}
                 {p.pending && (
                   <View style={styles.pendingBadge} accessibilityLabel="Waiting to upload">
                     <Text style={styles.pendingText}>⏳</Text>
@@ -68,12 +83,16 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
           : undefined}
         onClose={() => setViewing(null)}
         onDelete={() => viewing && confirmDelete(viewing)}
+        note={viewing?.note ?? ''}
+        onSaveNote={note => viewing && saveNote(viewing, note)}
+        focusNote={focusNote}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  noteBadge: { position: 'absolute', left: 4, bottom: 4, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, paddingHorizontal: 5, paddingVertical: 1 },
   pendingBadge: { position: 'absolute', right: 4, bottom: 4, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, paddingHorizontal: 5, paddingVertical: 1 },
   pendingText: { fontSize: 11, color: '#fff' },
   block: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 0.5, borderColor: Colors.borderLight, padding: 14, marginBottom: 10, gap: 10 },

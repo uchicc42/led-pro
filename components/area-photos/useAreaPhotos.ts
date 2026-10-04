@@ -1,7 +1,7 @@
 import type { ImagePickerAsset } from 'expo-image-picker';
 import { useState } from 'react';
 import { getCurrentUser } from '../../constants/userStore';
-import { deleteRow, newId, queueCall, saveRow } from '../../lib/offline/data';
+import { deleteRow, newId, patchRow, queueCall, saveRow } from '../../lib/offline/data';
 import { pendingUploads, useOutboxState } from '../../lib/offline/outbox';
 import { useStore } from '../../lib/offline/store';
 import {
@@ -13,6 +13,7 @@ export type AreaPhoto = {
   storage_path: string;
   taken_by_name: string | null;
   created_at: string;
+  note: string | null;
   url: string;
   /** Still waiting to upload from this phone. */
   pending: boolean;
@@ -35,16 +36,19 @@ export function useAreaPhotos(areaId: string | undefined, jobId: string | undefi
       storage_path: p.storage_path,
       taken_by_name: p.taken_by_name ?? null,
       created_at: p.created_at,
+      note: p.note ?? null,
       _localUri: p._localUri ?? null,
       url: displayUrl(p.storage_path, p._localUri),
       pending: waiting.has(p.storage_path),
     }));
 
-  async function takePhoto() {
+  /** Takes a photo; returns the new photo's id so the screen can offer to add a note. */
+  async function takePhoto(): Promise<string | null> {
     setError('');
     const assets = await pickFromCamera();
-    if (assets === null) return setError(CAMERA_DENIED_MESSAGE);
-    await savePhotos(assets);
+    if (assets === null) { setError(CAMERA_DENIED_MESSAGE); return null; }
+    const ids = await savePhotos(assets);
+    return ids[0] ?? null;
   }
 
   async function choosePhoto() {
@@ -52,11 +56,11 @@ export function useAreaPhotos(areaId: string | undefined, jobId: string | undefi
     await savePhotos(await pickFromLibrary(true));
   }
 
-  async function savePhotos(assets: ImagePickerAsset[]) {
-    if (!areaId || !jobId || assets.length === 0) return;
+  async function savePhotos(assets: ImagePickerAsset[]): Promise<string[]> {
+    if (!areaId || !jobId || assets.length === 0) return [];
     setSaving(true);
     const user = await getCurrentUser();
-    let saved = 0;
+    const savedIds: string[] = [];
 
     for (const asset of assets) {
       const path = photoPath(`${jobId}/${areaId}`, asset);
@@ -66,21 +70,27 @@ export function useAreaPhotos(areaId: string | undefined, jobId: string | undefi
         continue;
       }
       // Queued after the file, so the record only reaches the server once the photo has.
+      const id = newId();
       saveRow('area_photos', {
-        id: newId(),
+        id,
         area_id: areaId,
         storage_path: path,
         taken_by_name: user?.name ?? null,
         created_at: new Date().toISOString(),
         _localUri: localUri ?? null,
       });
-      saved++;
+      savedIds.push(id);
     }
 
-    if (saved > 0) {
-      queueCall('logChange', areaId, jobId, user?.id, user?.name, 'photo_added', `${saved} photo(s) added`);
+    if (savedIds.length > 0) {
+      queueCall('logChange', areaId, jobId, user?.id, user?.name, 'photo_added', `${savedIds.length} photo(s) added`);
     }
     setSaving(false);
+    return savedIds;
+  }
+
+  function saveNote(photo: AreaPhoto, note: string) {
+    patchRow('area_photos', photo.id, { note: note || null });
   }
 
   function deletePhoto(photo: AreaPhoto) {
@@ -89,5 +99,5 @@ export function useAreaPhotos(areaId: string | undefined, jobId: string | undefi
     removePhotoFile(photo.storage_path, photo._localUri);
   }
 
-  return { photos, uploading: saving, error, takePhoto, choosePhoto, deletePhoto };
+  return { photos, uploading: saving, error, takePhoto, choosePhoto, deletePhoto, saveNote };
 }
