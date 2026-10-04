@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { PhotoViewer } from '../ui/photo-viewer';
 import { AreaPhoto, useAreaPhotos } from './useAreaPhotos';
 
 // Native photo strip for an area. The web version lives in AreaPhotos.web.tsx.
@@ -54,27 +54,14 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
         !uploading && <Text style={styles.empty}>No photos yet for this area.</Text>
       )}
 
-      <Modal visible={!!viewing} animationType="fade" onRequestClose={() => setViewing(null)}>
-        <SafeAreaView style={styles.viewer}>
-          <View style={styles.viewerBar}>
-            <TouchableOpacity onPress={() => setViewing(null)} style={styles.viewerBtn}>
-              <Text style={styles.viewerBtnText}>Close</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => viewing && confirmDelete(viewing)} style={styles.viewerBtn}>
-              <Text style={[styles.viewerBtnText, { color: '#FF8A80' }]}>Delete</Text>
-            </TouchableOpacity>
-          </View>
-          {viewing && (
-            <>
-              <Image source={{ uri: viewing.url }} style={styles.viewerImage} contentFit="contain" />
-              <Text style={styles.viewerMeta}>
-                {viewing.taken_by_name ? `${viewing.taken_by_name} · ` : ''}
-                {new Date(viewing.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-              </Text>
-            </>
-          )}
-        </SafeAreaView>
-      </Modal>
+      <PhotoViewer
+        uri={viewing?.url ?? null}
+        meta={viewing
+          ? `${viewing.taken_by_name ? `${viewing.taken_by_name} · ` : ''}${new Date(viewing.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+          : undefined}
+        onClose={() => setViewing(null)}
+        onDelete={() => viewing && confirmDelete(viewing)}
+      />
     </View>
   );
 }
@@ -95,10 +82,4 @@ const styles = StyleSheet.create({
   strip: { gap: 8 },
   thumb: { width: 96, height: 96, borderRadius: 8, backgroundColor: Colors.bgSecondary },
   empty: { fontSize: 12, color: Colors.textTertiary },
-  viewer: { flex: 1, backgroundColor: '#000' },
-  viewerBar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8 },
-  viewerBtn: { padding: 8 },
-  viewerBtnText: { color: '#fff', fontSize: 15, fontWeight: '500' },
-  viewerImage: { flex: 1 },
-  viewerMeta: { color: '#bbb', fontSize: 12, textAlign: 'center', padding: 12 },
 });

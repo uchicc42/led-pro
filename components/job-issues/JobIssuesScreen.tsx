@@ -4,7 +4,6 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { PhotoViewer } from '../ui/photo-viewer';
 import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import { ISSUE_CATEGORIES, StatusFilter, categoryInfo, describeLightRow, useJobIssues } from './useJobIssues';
 
@@ -209,14 +209,7 @@ export default function JobIssuesScreen() {
         )}
       </KeyboardScrollView>
 
-      <Modal visible={!!viewingUrl} animationType="fade" onRequestClose={() => setViewingUrl(null)}>
-        <SafeAreaView style={styles.viewer}>
-          <TouchableOpacity onPress={() => setViewingUrl(null)} style={styles.viewerClose}>
-            <Text style={styles.viewerCloseText}>Close</Text>
-          </TouchableOpacity>
-          {viewingUrl && <Image source={{ uri: viewingUrl }} style={{ flex: 1 }} contentFit="contain" />}
-        </SafeAreaView>
-      </Modal>
+      <PhotoViewer uri={viewingUrl} onClose={() => setViewingUrl(null)} />
     </SafeAreaView>
   );
 }
@@ -273,7 +266,4 @@ const styles = StyleSheet.create({
   resolveBtnText: { fontSize: 13, color: Colors.teal, fontWeight: '500' },
   deleteBtn: { flex: 1, borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
   deleteBtnText: { fontSize: 13, color: '#A32D2D' },
-  viewer: { flex: 1, backgroundColor: '#000' },
-  viewerClose: { padding: 16, alignSelf: 'flex-start' },
-  viewerCloseText: { color: '#fff', fontSize: 15, fontWeight: '500' },
 });
