@@ -1,12 +1,13 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { clearCurrentUser, getCurrentUser, setCurrentUser } from '../../constants/userStore';
+import { AUTH_VERSION, pinLogin } from '../../lib/auth';
 import { useOnline } from '../../lib/offline/connectivity';
 import { supabase } from '../../supabase';
 
 // Each person uses their own phone, so whoever logged in last stays logged in, with or
 // without signal ("Continue as …"). Switching to a different person checks their PIN, which
-// needs signal; the team list is never stored on the device.
+// is checked on the server, which needs signal; the team list is never stored on the device.
 //
 // `beforeLogin` lets a platform screen clear its own session state (e.g. web localStorage)
 // before switching users.
@@ -19,6 +20,7 @@ export function useLogin(beforeLogin?: () => void) {
   const [error, setError] = useState('');
   const [storedUser, setStoredUser] = useState<any>(null);
   const [userChecked, setUserChecked] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   // Re-check who's logged in each time the login screen is shown (e.g. after "Switch user").
   useFocusEffect(
@@ -37,7 +39,8 @@ export function useLogin(beforeLogin?: () => void) {
     if (!online || membersLoaded) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.from('team_members').select('*').order('created_at');
+      // Names and colours only: PINs are checked on the server.
+      const { data } = await supabase.from('login_members').select('*').order('created_at');
       if (cancelled || !data) return;
       setMembers(data);
       setSelected((s: any) => s ?? data[0]);
@@ -46,26 +49,39 @@ export function useLogin(beforeLogin?: () => void) {
     return () => { cancelled = true; };
   }, [online, membersLoaded]);
 
+  // Only logins made with the current (server-checked) method can continue without a PIN.
+  const canContinue = !!storedUser && storedUser.authVersion === AUTH_VERSION;
+
   function continueAsStored() {
-    if (!storedUser) return;
+    if (!canContinue) return;
     router.replace(`/home?role=${storedUser.role}` as any);
   }
 
   const checkPin = useCallback(async (enteredPin: string) => {
-    if (enteredPin === selected?.pin_hash) {
+    if (!selected) return;
+    setChecking(true);
+    const result = await pinLogin(selected.id, enteredPin);
+    setChecking(false);
+    if (result.ok) {
       beforeLogin?.();
       await clearCurrentUser();
-      await setCurrentUser(selected);
-      setStoredUser(selected);
-      router.replace(`/home?role=${selected.role}` as any);
-    } else {
-      setError('Incorrect PIN — try again');
-      setPin('');
+      const user = { ...result.member, authVersion: AUTH_VERSION };
+      await setCurrentUser(user);
+      setStoredUser(user);
+      router.replace(`/home?role=${user.role}` as any);
+      return;
     }
+    setPin('');
+    setError({
+      wrong: 'Incorrect PIN — try again',
+      locked: 'Too many wrong PINs. Wait 15 minutes, then try again.',
+      offline: 'Logging in needs signal. Try again when connected.',
+      error: "Couldn't log in right now. Please try again.",
+    }[result.reason]);
   }, [selected, beforeLogin]);
 
   function pressPin(digit: string) {
-    if (pin.length >= 4) return;
+    if (pin.length >= 4 || checking) return;
     const newPin = pin + digit;
     setPin(newPin);
     setError('');
@@ -92,6 +108,6 @@ export function useLogin(beforeLogin?: () => void) {
   return {
     members, selected, pin, setPin, error, setError, loading,
     checkPin, pressPin, deletePin, selectMember,
-    online, storedUser, continueAsStored, canSwitch, membersLoading,
+    online, storedUser, canContinue, continueAsStored, canSwitch, membersLoading, checking,
   };
 }

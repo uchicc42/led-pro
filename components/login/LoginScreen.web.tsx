@@ -17,7 +17,7 @@ export default function LoginScreen() {
   const {
     members, selected, pin, setPin, setError, error, loading,
     checkPin, pressPin, deletePin, selectMember,
-    online, storedUser, continueAsStored, canSwitch, membersLoading,
+    online, storedUser, canContinue, continueAsStored, canSwitch, membersLoading, checking,
   } = useLogin(clearWebSession);
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function LoginScreen() {
         </div>
 
         {/* Whoever last logged in on this device can carry on, with or without signal. */}
-        {storedUser && (
+        {canContinue && (
           <div
             style={{ ...webStyles.continueCard, borderColor: storedUser.color || Colors.blue }}
             onClick={e => { e.stopPropagation(); continueAsStored(); }}
@@ -66,12 +66,12 @@ export default function LoginScreen() {
           </div>
         )}
 
-        <div style={webStyles.sectionLabel}>{storedUser ? 'Switch user' : 'Who\u2019s logging in?'}</div>
+        <div style={webStyles.sectionLabel}>{canContinue ? 'Switch user' : 'Who\u2019s logging in?'}</div>
 
         {!online ? (
           <div style={webStyles.offlineBox}>
             <div style={{ fontWeight: '600', marginBottom: 4 }}>No connection</div>
-            {storedUser
+            {canContinue
               ? 'Switching to a different person needs a connection. You can continue as yourself above.'
               : 'Log in once with a connection on this device. After that it works offline.'}
           </div>
@@ -116,7 +116,9 @@ export default function LoginScreen() {
         </div>
 
         <div style={webStyles.pinHint} onClick={focusPinInput}>
-          {error
+          {checking
+            ? <span style={{ color: '#888' }}>Checking…</span>
+            : error
             ? <span style={{ color: '#A32D2D' }}>{error}</span>
             : pin.length === 0
             ? <span style={{ color: '#aaa' }}>Click here or type your 4-digit PIN</span>

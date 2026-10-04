@@ -9,8 +9,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // home indicator.
 //
 // With `onSaveNote`, the viewer also shows an editable note for the photo.
-export function PhotoViewer({ uri, meta, onClose, onDelete, note, onSaveNote, focusNote = false }: {
+export function PhotoViewer({ uri, cacheKey, meta, onClose, onDelete, note, onSaveNote, focusNote = false }: {
   uri: string | null;
+  /** Stable id for the image cache (the photo's storage path), so a new link reuses the cached image. */
+  cacheKey?: string;
   meta?: string;
   onClose: () => void;
   onDelete?: () => void;
@@ -50,7 +52,7 @@ export function PhotoViewer({ uri, meta, onClose, onDelete, note, onSaveNote, fo
               </TouchableOpacity>
             )}
           </View>
-          {uri && <Image source={{ uri }} style={styles.image} contentFit="contain" />}
+          {uri && <Image source={{ uri, cacheKey }} style={styles.image} contentFit="contain" cachePolicy="memory-disk" />}
           {!!meta && <Text style={styles.meta}>{meta}</Text>}
 
           {onSaveNote && uri && (

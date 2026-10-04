@@ -6,4 +6,6 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   realtime: { transport: ws },
+  // The browser keeps the login session (localStorage) and renews it automatically.
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
 });

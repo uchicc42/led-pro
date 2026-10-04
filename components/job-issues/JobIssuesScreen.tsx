@@ -33,7 +33,8 @@ export default function JobIssuesScreen() {
     rowsForArea, note, setNote, photo, setPhoto, takeIssuePhoto, chooseIssuePhoto,
     submitting, canSubmit, submitIssue, error, setResolved, deleteIssue, photoUrl, resetForm,
   } = useJobIssues();
-  const [viewingUrl, setViewingUrl] = useState<string | null>(null);
+  // Storage path of the issue photo being viewed.
+  const [viewingPath, setViewingPath] = useState<string | null>(null);
 
   function confirmDelete(issue: any) {
     Alert.alert('Delete issue', 'Remove this issue from the log?', [
@@ -190,8 +191,8 @@ export default function JobIssuesScreen() {
                 <Text style={styles.issueLocation}>{issueLocation(issue)}</Text>
                 <Text style={styles.issueNote}>{issue.note}</Text>
                 {issue.photo_path && (
-                  <TouchableOpacity onPress={() => setViewingUrl(photoUrl(issue.photo_path))}>
-                    <Image source={{ uri: photoUrl(issue.photo_path) }} style={styles.issuePhoto} contentFit="cover" />
+                  <TouchableOpacity onPress={() => setViewingPath(issue.photo_path)}>
+                    <Image source={{ uri: photoUrl(issue.photo_path), cacheKey: issue.photo_path }} style={styles.issuePhoto} contentFit="cover" cachePolicy="memory-disk" />
                   </TouchableOpacity>
                 )}
                 <Text style={styles.issueMeta}>
@@ -212,7 +213,7 @@ export default function JobIssuesScreen() {
         )}
       </KeyboardScrollView>
 
-      <PhotoViewer uri={viewingUrl} onClose={() => setViewingUrl(null)} />
+      <PhotoViewer uri={viewingPath ? photoUrl(viewingPath) || null : null} cacheKey={viewingPath ?? undefined} onClose={() => setViewingPath(null)} />
     </SafeAreaView>
   );
 }

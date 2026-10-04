@@ -2,7 +2,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { queueCall } from '../../lib/offline/data';
 import { deleteLocalPhoto, storePhoto } from '../../lib/offline/files';
 import { cancelUpload } from '../../lib/offline/outbox';
-import { supabase } from '../../supabase';
 
 export const PHOTO_BUCKET = 'job-photos';
 
@@ -36,13 +35,9 @@ export function savePhoto(path: string, asset: ImagePicker.ImagePickerAsset) {
   return storePhoto(PHOTO_BUCKET, path, asset);
 }
 
-export function photoUrl(path: string) {
-  return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
-}
-
-/** Where to show a photo from: the copy on this phone if there is one, otherwise online. */
-export function displayUrl(path: string, localUri?: string | null) {
-  return localUri || photoUrl(path);
+/** Where to show a photo from: the copy on this phone if there is one, otherwise its private link. */
+export function displayUrl(localUri: string | null | undefined, link: string | null) {
+  return localUri || link || '';
 }
 
 /** Removes a photo's file: cancels its upload if it hasn't happened yet, otherwise deletes it online. */

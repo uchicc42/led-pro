@@ -78,7 +78,16 @@ registerConflictHandler(async (table, theirs, mine, fields) => {
 
 const trackedJobs = new Set<string>();
 
+// Downloads only run with a login. Once the database is restricted to team members, a request
+// without one returns empty results rather than an error, which would look like everything
+// had been deleted and wipe the device copy.
+async function signedIn() {
+  const { data } = await supabase.auth.getSession();
+  return !!data.session;
+}
+
 async function pullReference() {
+  if (!(await signedIn())) return;
   const [{ data: lightTypes }, { data: controlTypes }, { data: members }] = await Promise.all([
     supabase.from('light_types').select('*'),
     supabase.from('control_types').select('*'),
@@ -91,6 +100,7 @@ async function pullReference() {
 }
 
 export async function pullJobsList(): Promise<Row[]> {
+  if (!(await signedIn())) return [];
   const { data, error } = await supabase
     .from('jobs')
     .select('*, created_by_member:team_members(name, initials, color), areas(id, is_complete)');
@@ -105,6 +115,7 @@ export async function pullJobsList(): Promise<Row[]> {
 
 /** Downloads everything for one job into the device copy. */
 export async function pullJob(jobId: string) {
+  if (!(await signedIn())) return;
   const [{ data: job }, { data: areas, error }, { data: issues }] = await Promise.all([
     supabase.from('jobs').select('*').eq('id', jobId).maybeSingle(),
     supabase.from('areas').select('*, light_rows(*), area_controls(*), area_photos(*)').eq('job_id', jobId),
@@ -196,6 +207,20 @@ export function startSyncEngine() {
   started = true;
   syncNow();
   subscribeOnline(() => { if (isOnline()) syncNow(); });
-  AppState.addEventListener('change', s => { if (s === 'active') syncNow(); });
+  // Renew the login only while the app is in use (Supabase's recommendation for phones).
+  supabase.auth.startAutoRefresh();
+  AppState.addEventListener('change', s => {
+    if (s === 'active') {
+      supabase.auth.startAutoRefresh();
+      syncNow();
+    } else {
+      supabase.auth.stopAutoRefresh();
+    }
+  });
+  // A fresh login (or renewal) is a good moment to upload and refresh.
+  supabase.auth.onAuthStateChange(event => {
+    // Deferred: Supabase calls made directly inside this callback can deadlock its auth lock.
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') setTimeout(() => syncNow(), 0);
+  });
   setInterval(() => { if (isOnline()) syncNow(); }, 2 * 60 * 1000);
 }

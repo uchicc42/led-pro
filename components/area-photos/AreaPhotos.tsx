@@ -57,7 +57,7 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
           {photos.map(p => (
             <TouchableOpacity key={p.id} style={styles.photoCard} onPress={() => setViewing(p)} accessibilityLabel={p.note ? `Photo: ${p.note}` : 'View photo'}>
               <View>
-                <Image source={{ uri: p.url }} style={styles.thumb} contentFit="cover" transition={150} />
+                <Image source={{ uri: p.url, cacheKey: p.storage_path }} style={styles.thumb} contentFit="cover" transition={150} cachePolicy="memory-disk" />
                 {p.pending && (
                   <View style={styles.pendingBadge} accessibilityLabel="Waiting to upload">
                     <Text style={styles.pendingText}>⏳</Text>
@@ -76,7 +76,8 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
       )}
 
       <PhotoViewer
-        uri={viewing?.url ?? null}
+        uri={viewing?.url || null}
+        cacheKey={viewing?.storage_path}
         meta={viewing
           ? `${viewing.taken_by_name ? `${viewing.taken_by_name} · ` : ''}${new Date(viewing.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
           : undefined}

@@ -6,6 +6,7 @@ import { useOnline } from '../../lib/offline/connectivity';
 import { deleteRow, newId, patchRow, queueCall, saveRow } from '../../lib/offline/data';
 import { useStore } from '../../lib/offline/store';
 import { trackJob } from '../../lib/offline/sync';
+import { usePhotoLinks } from '../../lib/photoUrls';
 import {
   CAMERA_DENIED_MESSAGE, displayUrl, photoPath, pickFromCamera, pickFromLibrary, removePhotoFile, savePhoto,
 } from '../area-photos/pickPhotos';
@@ -161,7 +162,8 @@ export function useJobIssues() {
   }
 
   // Show an issue's photo from this phone if it's still here, otherwise from online storage.
-  const photoUrl = (path: string) => displayUrl(path, issues.find(i => i.photo_path === path)?._localUri);
+  const linkFor = usePhotoLinks(issues.filter(i => i.photo_path && !i._localUri).map(i => i.photo_path));
+  const photoUrl = (path: string) => displayUrl(issues.find(i => i.photo_path === path)?._localUri, linkFor(path));
 
   const openCount = issues.filter(i => i.status === 'open').length;
   const visibleIssues = issues.filter(i => filter === 'all' || i.status === filter);

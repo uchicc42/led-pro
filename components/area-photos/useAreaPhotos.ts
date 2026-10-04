@@ -4,6 +4,7 @@ import { getCurrentUser } from '../../constants/userStore';
 import { deleteRow, newId, patchRow, queueCall, saveRow } from '../../lib/offline/data';
 import { pendingUploads, useOutboxState } from '../../lib/offline/outbox';
 import { useStore } from '../../lib/offline/store';
+import { usePhotoLinks } from '../../lib/photoUrls';
 import {
   CAMERA_DENIED_MESSAGE, displayUrl, photoPath, pickFromCamera, pickFromLibrary, removePhotoFile, savePhoto,
 } from './pickPhotos';
@@ -29,8 +30,10 @@ export function useAreaPhotos(areaId: string | undefined, jobId: string | undefi
   const [error, setError] = useState('');
 
   const waiting = pendingUploads();
-  const photos: AreaPhoto[] = store.where('area_photos', p => p.area_id === areaId)
-    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+  const rows = store.where('area_photos', p => p.area_id === areaId)
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const linkFor = usePhotoLinks(rows.filter(p => !p._localUri).map(p => p.storage_path));
+  const photos: AreaPhoto[] = rows
     .map(p => ({
       id: p.id,
       storage_path: p.storage_path,
@@ -38,7 +41,7 @@ export function useAreaPhotos(areaId: string | undefined, jobId: string | undefi
       created_at: p.created_at,
       note: p.note ?? null,
       _localUri: p._localUri ?? null,
-      url: displayUrl(p.storage_path, p._localUri),
+      url: displayUrl(p._localUri, linkFor(p.storage_path)),
       pending: waiting.has(p.storage_path),
     }));
 

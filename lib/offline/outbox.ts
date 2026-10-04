@@ -182,10 +182,17 @@ export function registerConflictHandler(handler: typeof conflictHandler) {
   conflictHandler = handler;
 }
 
-type Outcome = { result: 'ok' } | { result: 'retry'; error: string } | { result: 'rejected'; error: string };
+type Outcome =
+  | { result: 'ok' }
+  | { result: 'retry'; error: string; authExpired?: boolean }
+  | { result: 'rejected'; error: string };
 
 function classify(error: any, status?: number): Outcome {
   const message = String(error?.message ?? error ?? 'Unknown error');
+  // An expired login (e.g. after a long time offline) is renewed and retried, never rejected.
+  if (status === 401 || /jwt|PGRST30/i.test(message) || /jwt/i.test(String(error?.code ?? ''))) {
+    return { result: 'retry', error: message, authExpired: true };
+  }
   const transient = !isOnline() || !status || status >= 500 || status === 429 || status === 408 ||
     /network|fetch|timed? ?out|abort|connection/i.test(message);
   return transient ? { result: 'retry', error: message } : { result: 'rejected', error: message };
@@ -247,6 +254,11 @@ export function flushOutbox() {
   if (!flushing) {
     flushing = (async () => {
       await loadOutbox();
+      // Nothing uploads without a login: the server would reject it. Changes wait until
+      // the person has logged in (getSession also renews an expired session when online).
+      const { data: auth } = await supabase.auth.getSession();
+      if (!auth.session) return;
+      let renewed = false;
       while (queue.length > 0 && isOnline()) {
         const op = queue[0];
         inFlightOpId = op.opId;
@@ -254,6 +266,11 @@ export function flushOutbox() {
         inFlightOpId = null;
         if (outcome.result === 'ok') {
           queue = queue.filter(q => q.opId !== op.opId);
+        } else if (outcome.result === 'retry' && outcome.authExpired && !renewed) {
+          // Renew the login once and try the same change again straight away.
+          renewed = true;
+          await supabase.auth.refreshSession();
+          continue;
         } else if (outcome.result === 'retry') {
           op.attempts++;
           op.lastError = outcome.error;

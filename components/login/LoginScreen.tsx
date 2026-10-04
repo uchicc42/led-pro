@@ -14,7 +14,7 @@ import { useLogin } from './useLogin';
 export default function LoginScreen() {
   const {
     members, selected, pin, error, loading, pressPin, deletePin, selectMember,
-    online, storedUser, continueAsStored, canSwitch, membersLoading,
+    online, storedUser, canContinue, continueAsStored, canSwitch, membersLoading, checking,
   } = useLogin();
 
   if (loading) return (
@@ -37,7 +37,7 @@ export default function LoginScreen() {
         </View>
 
         {/* Whoever last logged in on this phone can carry on, with or without signal. */}
-        {storedUser && (
+        {canContinue && (
           <TouchableOpacity style={[styles.continueCard, { borderColor: userColor }]} onPress={continueAsStored}>
             <View style={[styles.avatar, { backgroundColor: userColor + '22', marginBottom: 0 }]}>
               <Text style={[styles.avatarText, { color: userColor }]}>{storedUser.initials}</Text>
@@ -50,13 +50,13 @@ export default function LoginScreen() {
           </TouchableOpacity>
         )}
 
-        <Text style={styles.sectionLabel}>{storedUser ? 'Switch user' : 'Who’s logging in?'}</Text>
+        <Text style={styles.sectionLabel}>{canContinue ? 'Switch user' : 'Who’s logging in?'}</Text>
 
         {!online ? (
           <View style={styles.offlineBox}>
             <Text style={styles.offlineTitle}>📵 No signal</Text>
             <Text style={styles.offlineText}>
-              {storedUser
+              {canContinue
                 ? 'Switching to a different person needs signal. You can continue as yourself above.'
                 : 'Log in once with signal on this phone. After that it works without signal.'}
             </Text>
@@ -88,7 +88,7 @@ export default function LoginScreen() {
               ))}
             </View>
 
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={[styles.errorText, checking && { color: Colors.textTertiary }]}>{checking ? 'Checking…' : error}</Text>
 
             <View style={styles.pinGrid}>
               {['1','2','3','4','5','6','7','8','9'].map((d) => (
