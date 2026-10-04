@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
 import {
   ActivityIndicator,
+  Alert,
   StyleSheet,
   Switch,
   Text,
@@ -18,8 +18,18 @@ import { useJobSettings } from './useJobSettings';
 export default function JobSettingsScreen() {
   const {
     loading, name, setName, location, setLocation, date, setDate, mode, setMode,
-    columns, saving, error, isReady, save, backHref,
+    columns, saving, error, isReady, detailsDirty, savedFlash,
+    saveDetails, saveAndGoBack, goBack,
   } = useJobSettings();
+
+  function handleBack() {
+    if (!detailsDirty) return goBack();
+    Alert.alert('Unsaved changes', 'Save your changes to the job name, location or date?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Discard', style: 'destructive', onPress: goBack },
+      { text: 'Save', onPress: saveAndGoBack },
+    ]);
+  }
 
   if (loading) return (
     <View style={styles.center}>
@@ -32,7 +42,7 @@ export default function JobSettingsScreen() {
       <KeyboardScrollView contentContainerStyle={styles.scroll}>
 
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.push(backHref as any)}>
+          <TouchableOpacity onPress={handleBack}>
             <Text style={styles.backBtn}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Job settings</Text>
@@ -66,11 +76,26 @@ export default function JobSettingsScreen() {
           onChangeText={setDate}
         />
 
+        {detailsDirty && (
+          <TouchableOpacity
+            style={[styles.saveBtn, (!isReady || saving) && { opacity: 0.5 }]}
+            onPress={saveDetails}
+            disabled={!isReady || saving}
+          >
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save details</Text>}
+          </TouchableOpacity>
+        )}
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
         <View style={styles.divider} />
 
-        <Text style={styles.sectionLabel}>Features for this job</Text>
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionLabel}>Features for this job</Text>
+          {savedFlash && <Text style={styles.savedFlash}>✓ Saved</Text>}
+        </View>
         {columns.map((col) => (
-          <View key={col.label} style={styles.toggleRow}>
+          <View key={col.field} style={styles.toggleRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.toggleLabel}>{col.label}</Text>
               <Text style={styles.toggleSub}>{col.sub}</Text>
@@ -83,7 +108,9 @@ export default function JobSettingsScreen() {
             />
           </View>
         ))}
-        <Text style={styles.hint}>Turning a feature off hides it but keeps any data already entered.</Text>
+        <Text style={styles.hint}>
+          Switches save as soon as you change them. Turning a feature off hides it but keeps any data already entered.
+        </Text>
 
         <View style={styles.divider} />
 
@@ -107,19 +134,6 @@ export default function JobSettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-        <TouchableOpacity
-          style={[styles.saveBtn, (!isReady || saving) && { opacity: 0.5 }]}
-          onPress={save}
-          disabled={!isReady || saving}
-        >
-          {saving
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.saveBtnText}>Save settings</Text>
-          }
-        </TouchableOpacity>
-
       </KeyboardScrollView>
     </SafeAreaView>
   );
@@ -135,7 +149,9 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 11, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, marginTop: 14 },
   input: { backgroundColor: '#fff', borderRadius: 10, borderWidth: 0.5, borderColor: Colors.borderLight, padding: 12, fontSize: 14, color: Colors.textPrimary },
   divider: { height: 0.5, backgroundColor: Colors.borderLight, marginVertical: 20 },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionLabel: { fontSize: 11, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+  savedFlash: { fontSize: 12, color: Colors.green, fontWeight: '500', marginBottom: 12 },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: Colors.borderLight },
   toggleLabel: { fontSize: 13, color: Colors.textPrimary },
   toggleSub: { fontSize: 11, color: Colors.textTertiary, marginTop: 2 },
@@ -146,7 +162,7 @@ const styles = StyleSheet.create({
   modeIcon: { fontSize: 22, marginBottom: 6 },
   modeName: { fontSize: 13, fontWeight: '500', color: Colors.textPrimary },
   modeSub: { fontSize: 11, color: Colors.textTertiary, marginTop: 2, textAlign: 'center' },
-  errorText: { color: '#A32D2D', fontSize: 13, marginBottom: 12 },
-  saveBtn: { backgroundColor: Colors.blue, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
+  errorText: { color: '#A32D2D', fontSize: 13, marginTop: 12 },
+  saveBtn: { backgroundColor: Colors.blue, borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 14 },
   saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '500' },
 });
