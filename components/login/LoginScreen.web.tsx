@@ -17,19 +17,21 @@ export default function LoginScreen() {
   const {
     members, selected, pin, setPin, setError, error, loading,
     checkPin, pressPin, deletePin, selectMember,
+    online, storedUser, continueAsStored, canSwitch, membersLoading,
   } = useLogin(clearWebSession);
 
   useEffect(() => {
+    if (!canSwitch) return;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
     const tryFocus = () => {
       const input = document.getElementById('pin-input');
-      if (input) {
-        input.focus();
-      } else {
-        setTimeout(tryFocus, 50);
-      }
+      if (input) input.focus();
+      else if (attempts++ < 40) timer = setTimeout(tryFocus, 50);
     };
-    setTimeout(tryFocus, 100);
-  }, []);
+    timer = setTimeout(tryFocus, 100);
+    return () => clearTimeout(timer);
+  }, [canSwitch]);
 
   if (loading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -47,7 +49,36 @@ export default function LoginScreen() {
           <div style={webStyles.logoSub}>Commercial lighting management</div>
         </div>
 
-        <div style={webStyles.sectionLabel}>Who&apos;s logging in?</div>
+        {/* Whoever last logged in on this device can carry on, with or without signal. */}
+        {storedUser && (
+          <div
+            style={{ ...webStyles.continueCard, borderColor: storedUser.color || Colors.blue }}
+            onClick={e => { e.stopPropagation(); continueAsStored(); }}
+          >
+            <div style={{ ...webStyles.avatar, margin: 0, background: (storedUser.color || Colors.blue) + '22', color: storedUser.color || Colors.blue }}>
+              {storedUser.initials}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={webStyles.continueTitle}>Continue as {storedUser.name}</div>
+              <div style={webStyles.continueSub}>{online ? 'Logged in on this device' : 'Works without a connection'}</div>
+            </div>
+            <div style={{ fontSize: 20, color: storedUser.color || Colors.blue }}>→</div>
+          </div>
+        )}
+
+        <div style={webStyles.sectionLabel}>{storedUser ? 'Switch user' : 'Who\u2019s logging in?'}</div>
+
+        {!online ? (
+          <div style={webStyles.offlineBox}>
+            <div style={{ fontWeight: '600', marginBottom: 4 }}>No connection</div>
+            {storedUser
+              ? 'Switching to a different person needs a connection. You can continue as yourself above.'
+              : 'Log in once with a connection on this device. After that it works offline.'}
+          </div>
+        ) : membersLoading ? (
+          <div style={webStyles.offlineBox}>Loading team…</div>
+        ) : canSwitch && (
+          <>
         <div style={webStyles.memberRow}>
           {members.map((m) => (
             <div
@@ -141,6 +172,8 @@ export default function LoginScreen() {
             ⌫
           </div>
         </div>
+          </>
+        )}
 
         <div style={webStyles.divider} />
         <div style={webStyles.footer}>LED Pro · Internal use only</div>
@@ -150,6 +183,10 @@ export default function LoginScreen() {
 }
 
 const webStyles: Record<string, CSSProperties> = {
+  continueCard: { display: 'flex', alignItems: 'center', gap: 12, borderWidth: 1.5, borderStyle: 'solid', borderRadius: 14, padding: '12px 14px', marginBottom: 22, cursor: 'pointer' },
+  continueTitle: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
+  continueSub: { fontSize: 12, color: '#888', marginTop: 2 },
+  offlineBox: { background: '#FAEEDA', color: '#5C3A06', borderRadius: 12, padding: '12px 14px', fontSize: 13, lineHeight: '19px', marginBottom: 20 },
   page: {
     minHeight: '100vh',
     background: 'linear-gradient(135deg, #0f2942 0%, #1a4a7a 50%, #0f3d2e 100%)',
