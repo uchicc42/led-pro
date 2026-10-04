@@ -48,6 +48,7 @@ export function getIcon(changeType: string) {
     case 'job_settings': return '⚙️';
     case 'photo_added': return '📷';
     case 'issue_logged': return '⚠️';
+    case 'sync_conflict': return '🔀';
     default: return '📋';
   }
 }
