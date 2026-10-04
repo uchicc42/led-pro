@@ -1,7 +1,6 @@
 import { router } from 'expo-router';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -11,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import { useJobSettings } from './useJobSettings';
 
 // Native UI. The web UI lives in JobSettingsScreen.web.tsx; Metro picks the right file per platform.
@@ -29,7 +29,7 @@ export default function JobSettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView contentContainerStyle={styles.scroll}>
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.push(backHref as any)}>
@@ -120,7 +120,7 @@ export default function JobSettingsScreen() {
           }
         </TouchableOpacity>
 
-      </ScrollView>
+      </KeyboardScrollView>
     </SafeAreaView>
   );
 }

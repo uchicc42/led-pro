@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -13,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import { LIGHT_TYPE_PALETTE } from '../../constants/lightTypeColors';
 import { registerForPushNotifications } from '../../constants/notifications';
 import { clearCurrentUser, getCurrentUser } from '../../constants/userStore';
@@ -58,7 +58,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <KeyboardScrollView contentContainerStyle={styles.scroll}>
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.push('/home')}>
@@ -272,7 +272,7 @@ export default function SettingsScreen() {
 
         <Text style={styles.version}>LED Pro · v1.0.0</Text>
 
-      </ScrollView>
+      </KeyboardScrollView>
 
       <Modal visible={!!editingType} transparent animationType="slide" onRequestClose={() => setEditingTypeId(null)}>
         <View style={styles.modalOverlay}>

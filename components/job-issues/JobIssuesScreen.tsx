@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import { ISSUE_CATEGORIES, StatusFilter, categoryInfo, describeLightRow, useJobIssues } from './useJobIssues';
 
 // Native UI. The web UI lives in JobIssuesScreen.web.tsx; Metro picks the right file per platform.
@@ -50,7 +51,7 @@ export default function JobIssuesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <KeyboardScrollView contentContainerStyle={styles.scroll}>
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.push(backHref as any)}>
@@ -206,7 +207,7 @@ export default function JobIssuesScreen() {
             );
           })
         )}
-      </ScrollView>
+      </KeyboardScrollView>
 
       <Modal visible={!!viewingUrl} animationType="fade" onRequestClose={() => setViewingUrl(null)}>
         <SafeAreaView style={styles.viewer}>

@@ -1,7 +1,6 @@
 import { router } from 'expo-router';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -10,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import AreaPhotos from '../area-photos/AreaPhotos';
 import { CONTROL_LABEL } from '../area-entry/useAreaEntry';
 import { withMount } from '../scope-export/useScopeExport';
@@ -70,7 +70,7 @@ export default function ElectricianScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <KeyboardScrollView contentContainerStyle={styles.scroll}>
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.push(`/area-list?jobId=${jobId}`)}>
@@ -255,7 +255,7 @@ export default function ElectricianScreen() {
           </Text>
         )}
 
-      </ScrollView>
+      </KeyboardScrollView>
     </SafeAreaView>
   );
 }

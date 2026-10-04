@@ -6,7 +6,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import AreaPhotos from '../area-photos/AreaPhotos';
 import { AreaControl, CONTROL_LABEL, ControlKind, PickerTarget, useAreaEntry } from './useAreaEntry';
 
@@ -146,7 +146,7 @@ export default function AreaEntryScreen() {
         onSelect={item => picker?.select(item)}
         onClose={() => setPickerTarget(null)}
       />
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <KeyboardScrollView contentContainerStyle={styles.scroll}>
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.push(backToAreaList as any)}>
@@ -374,7 +374,7 @@ export default function AreaEntryScreen() {
           </Text>
         </TouchableOpacity>
 
-      </ScrollView>
+      </KeyboardScrollView>
     </SafeAreaView>
   );
 }

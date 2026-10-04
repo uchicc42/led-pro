@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import { useAreaList } from './useAreaList';
 
 // Native UI. The web UI lives in AreaListScreen.web.tsx; Metro picks the right file per platform.
@@ -23,6 +25,7 @@ export default function AreaListScreen() {
   } = useAreaList({ live: 'realtime' });
   // The role check reads the web session store, which doesn't exist on native, so this was always false here.
   const isElectrician = false;
+  const scrollRef = useRef<ScrollView>(null);
 
   if (loading) return (
     <View style={styles.center}>
@@ -32,7 +35,7 @@ export default function AreaListScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <KeyboardScrollView ref={scrollRef} contentContainerStyle={styles.scroll}>
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.push('/home')}>
@@ -207,6 +210,10 @@ export default function AreaListScreen() {
               value={newAreaName}
               onChangeText={setNewAreaName}
               autoFocus
+              // The form is the last thing on the screen; once the keyboard is up, bring it into view.
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
+              returnKeyType="done"
+              onSubmitEditing={addArea}
             />
             <View style={styles.addAreaBtns}>
               <TouchableOpacity style={styles.addAreaConfirm} onPress={addArea}>
@@ -223,7 +230,7 @@ export default function AreaListScreen() {
           </TouchableOpacity>
         ))}
 
-      </ScrollView>
+      </KeyboardScrollView>
     </SafeAreaView>
   );
 }
