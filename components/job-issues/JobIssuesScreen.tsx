@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { NotOnDevice } from '../ui/not-on-device';
 import { PhotoViewer } from '../ui/photo-viewer';
 import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import { ISSUE_CATEGORIES, StatusFilter, categoryInfo, describeLightRow, useJobIssues } from './useJobIssues';
@@ -27,7 +28,7 @@ const FILTERS: { key: StatusFilter; label: string }[] = [
 
 export default function JobIssuesScreen() {
   const {
-    job, areas, loading, filter, setFilter, openCount, visibleIssues, issueLocation, backHref,
+    job, areas, loading, notOnDevice, filter, setFilter, openCount, visibleIssues, issueLocation, backHref,
     formOpen, setFormOpen, category, setCategory, formAreaId, chooseArea, formRowId, setFormRowId,
     rowsForArea, note, setNote, photo, setPhoto, takeIssuePhoto, chooseIssuePhoto,
     submitting, canSubmit, submitIssue, error, setResolved, deleteIssue, photoUrl, resetForm,
@@ -40,6 +41,8 @@ export default function JobIssuesScreen() {
       { text: 'Delete', style: 'destructive', onPress: () => deleteIssue(issue) },
     ]);
   }
+
+  if (notOnDevice) return <NotOnDevice backHref={backHref} />;
 
   if (loading) return (
     <View style={styles.center}>

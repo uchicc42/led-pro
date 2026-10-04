@@ -1,10 +1,11 @@
 import type { ImagePickerAsset } from 'expo-image-picker';
-import { useEffect, useState } from 'react';
-import { logChange } from '../../constants/notifications';
+import { useState } from 'react';
 import { getCurrentUser } from '../../constants/userStore';
-import { supabase } from '../../supabase';
+import { deleteRow, newId, queueCall, saveRow } from '../../lib/offline/data';
+import { pendingUploads, useOutboxState } from '../../lib/offline/outbox';
+import { useStore } from '../../lib/offline/store';
 import {
-  CAMERA_DENIED_MESSAGE, photoPath, photoUrl, pickFromCamera, pickFromLibrary, removeFromBucket, uploadToBucket,
+  CAMERA_DENIED_MESSAGE, displayUrl, photoPath, pickFromCamera, pickFromLibrary, removePhotoFile, savePhoto,
 } from './pickPhotos';
 
 export type AreaPhoto = {
@@ -13,26 +14,31 @@ export type AreaPhoto = {
   taken_by_name: string | null;
   created_at: string;
   url: string;
+  /** Still waiting to upload from this phone. */
+  pending: boolean;
+  _localUri?: string | null;
 };
 
+// Photos are saved on the phone first and upload when there's signal, so they can be taken
+// anywhere on site. The list comes from the device copy.
 export function useAreaPhotos(areaId: string | undefined, jobId: string | undefined) {
-  const [photos, setPhotos] = useState<AreaPhoto[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const store = useStore();
+  useOutboxState(); // re-render as uploads finish, to clear the "waiting" marker
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    setPhotos([]);
-    if (areaId) loadPhotos();
-  }, [areaId]);
-
-  async function loadPhotos() {
-    const { data } = await supabase
-      .from('area_photos')
-      .select('*')
-      .eq('area_id', areaId)
-      .order('created_at', { ascending: false });
-    if (data) setPhotos(data.map((p: any) => ({ ...p, url: photoUrl(p.storage_path) })));
-  }
+  const waiting = pendingUploads();
+  const photos: AreaPhoto[] = store.where('area_photos', p => p.area_id === areaId)
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+    .map(p => ({
+      id: p.id,
+      storage_path: p.storage_path,
+      taken_by_name: p.taken_by_name ?? null,
+      created_at: p.created_at,
+      _localUri: p._localUri ?? null,
+      url: displayUrl(p.storage_path, p._localUri),
+      pending: waiting.has(p.storage_path),
+    }));
 
   async function takePhoto() {
     setError('');
@@ -48,48 +54,40 @@ export function useAreaPhotos(areaId: string | undefined, jobId: string | undefi
 
   async function savePhotos(assets: ImagePickerAsset[]) {
     if (!areaId || !jobId || assets.length === 0) return;
-    setUploading(true);
+    setSaving(true);
     const user = await getCurrentUser();
     let saved = 0;
 
     for (const asset of assets) {
       const path = photoPath(`${jobId}/${areaId}`, asset);
-      const { error: uploadError } = await uploadToBucket(path, asset);
-      if (uploadError) {
-        setError('A photo could not be uploaded. Check your connection and try again.');
+      const { localUri, error: saveError } = await savePhoto(path, asset);
+      if (saveError) {
+        setError(saveError);
         continue;
       }
-      const { data, error: insertError } = await supabase
-        .from('area_photos')
-        .insert({ area_id: areaId, storage_path: path, taken_by_name: user?.name ?? null })
-        .select()
-        .single();
-      if (insertError || !data) {
-        // Don't leave an orphaned file in storage if the record couldn't be saved.
-        await removeFromBucket(path);
-        setError('A photo could not be saved. Check your connection and try again.');
-        continue;
-      }
-      setPhotos(prev => [{ ...data, url: photoUrl(path) }, ...prev]);
+      // Queued after the file, so the record only reaches the server once the photo has.
+      saveRow('area_photos', {
+        id: newId(),
+        area_id: areaId,
+        storage_path: path,
+        taken_by_name: user?.name ?? null,
+        created_at: new Date().toISOString(),
+        _localUri: localUri ?? null,
+      });
       saved++;
     }
 
     if (saved > 0) {
-      await logChange(areaId, jobId, user?.id, user?.name, 'photo_added', `${saved} photo(s) added`);
+      queueCall('logChange', areaId, jobId, user?.id, user?.name, 'photo_added', `${saved} photo(s) added`);
     }
-    setUploading(false);
+    setSaving(false);
   }
 
-  async function deletePhoto(photo: AreaPhoto) {
+  function deletePhoto(photo: AreaPhoto) {
     setError('');
-    const { error: deleteError } = await supabase.from('area_photos').delete().eq('id', photo.id);
-    if (deleteError) {
-      setError('The photo could not be deleted. Try again.');
-      return;
-    }
-    await removeFromBucket(photo.storage_path);
-    setPhotos(prev => prev.filter(p => p.id !== photo.id));
+    deleteRow('area_photos', photo.id);
+    removePhotoFile(photo.storage_path, photo._localUri);
   }
 
-  return { photos, uploading, error, takePhoto, choosePhoto, deletePhoto };
+  return { photos, uploading: saving, error, takePhoto, choosePhoto, deletePhoto };
 }

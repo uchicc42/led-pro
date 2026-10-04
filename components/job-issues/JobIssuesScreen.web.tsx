@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import type { CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { NotOnDevice } from '../ui/not-on-device';
 import { ISSUE_CATEGORIES, StatusFilter, categoryInfo, describeLightRow, useJobIssues } from './useJobIssues';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses JobIssuesScreen.tsx.
@@ -14,11 +15,13 @@ const FILTERS: { key: StatusFilter; label: string }[] = [
 
 export default function JobIssuesScreen() {
   const {
-    job, areas, loading, filter, setFilter, openCount, visibleIssues, issueLocation, backHref,
+    job, areas, loading, notOnDevice, filter, setFilter, openCount, visibleIssues, issueLocation, backHref,
     formOpen, setFormOpen, category, setCategory, formAreaId, chooseArea, formRowId, setFormRowId,
     rowsForArea, note, setNote, photo, setPhoto, chooseIssuePhoto,
     submitting, canSubmit, submitIssue, error, setResolved, deleteIssue, photoUrl, resetForm,
   } = useJobIssues();
+
+  if (notOnDevice) return <NotOnDevice backHref={backHref} />;
 
   if (loading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

@@ -1,13 +1,14 @@
 import * as ImagePicker from 'expo-image-picker';
+import { queueCall } from '../../lib/offline/data';
+import { deleteLocalPhoto, storePhoto } from '../../lib/offline/files';
+import { cancelUpload } from '../../lib/offline/outbox';
 import { supabase } from '../../supabase';
-import { uploadPhoto } from './uploadPhoto';
 
 export const PHOTO_BUCKET = 'job-photos';
 
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
   mediaTypes: ['images'],
   quality: 0.5, // keeps uploads small over job-site connections
-  base64: true,
 };
 
 export const CAMERA_DENIED_MESSAGE = 'Camera access is off. Allow it for LED Pro in your phone settings to take photos.';
@@ -30,14 +31,22 @@ export function photoPath(folder: string, asset: ImagePicker.ImagePickerAsset) {
   return `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 }
 
-export async function uploadToBucket(path: string, asset: ImagePicker.ImagePickerAsset) {
-  return uploadPhoto(PHOTO_BUCKET, path, asset);
+/** Saves a photo: kept on the phone and uploaded when there's signal (web uploads now). */
+export function savePhoto(path: string, asset: ImagePicker.ImagePickerAsset) {
+  return storePhoto(PHOTO_BUCKET, path, asset);
 }
 
 export function photoUrl(path: string) {
   return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
-export async function removeFromBucket(path: string) {
-  await supabase.storage.from(PHOTO_BUCKET).remove([path]);
+/** Where to show a photo from: the copy on this phone if there is one, otherwise online. */
+export function displayUrl(path: string, localUri?: string | null) {
+  return localUri || photoUrl(path);
+}
+
+/** Removes a photo's file: cancels its upload if it hasn't happened yet, otherwise deletes it online. */
+export function removePhotoFile(path: string, localUri?: string | null) {
+  if (!cancelUpload(path)) queueCall('removeStorageFile', PHOTO_BUCKET, path);
+  deleteLocalPhoto(localUri);
 }

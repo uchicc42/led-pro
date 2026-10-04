@@ -1,11 +1,13 @@
 import type { ImagePickerAsset } from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { logChange, notifyJobIssue } from '../../constants/notifications';
 import { getCurrentUser } from '../../constants/userStore';
-import { supabase } from '../../supabase';
+import { useOnline } from '../../lib/offline/connectivity';
+import { deleteRow, newId, patchRow, queueCall, saveRow } from '../../lib/offline/data';
+import { useStore } from '../../lib/offline/store';
+import { trackJob } from '../../lib/offline/sync';
 import {
-  CAMERA_DENIED_MESSAGE, photoPath, photoUrl, pickFromCamera, pickFromLibrary, removeFromBucket, uploadToBucket,
+  CAMERA_DENIED_MESSAGE, displayUrl, photoPath, pickFromCamera, pickFromLibrary, removePhotoFile, savePhoto,
 } from '../area-photos/pickPhotos';
 
 export type IssueCategory = 'bad_light' | 'scope_change' | 'missing_material' | 'other';
@@ -30,11 +32,19 @@ export function describeLightRow(row: any) {
 export function useJobIssues() {
   // areaId is set when opened from the electrician screen: the form starts open with that area chosen.
   const { jobId, areaId: fromAreaId } = useLocalSearchParams<{ jobId: string; areaId?: string }>();
-  const [job, setJob] = useState<any>(null);
-  const [areas, setAreas] = useState<any[]>([]);
-  const [issues, setIssues] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const store = useStore();
+  const online = useOnline();
   const [filter, setFilter] = useState<StatusFilter>('open');
+
+  // Everything comes from the device copy, so issues can be logged and resolved offline.
+  const job = store.get('jobs', jobId) ?? null;
+  const areas = store.where('areas', a => a.job_id === jobId)
+    .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+    .map((a): any => ({ ...a, light_rows: store.where('light_rows', r => r.area_id === a.id) }));
+  const issues = store.where('job_issues', i => i.job_id === jobId)
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const loading = !store.loaded || (!job && online);
+  const notOnDevice = store.loaded && !job && !online;
 
   // New issue form
   const [formOpen, setFormOpen] = useState(!!fromAreaId);
@@ -48,7 +58,7 @@ export function useJobIssues() {
 
   useFocusEffect(
     useCallback(() => {
-      loadAll();
+      trackJob(jobId);
     }, [jobId])
   );
 
@@ -57,26 +67,6 @@ export function useJobIssues() {
     setFormRowId(null);
     setFormOpen(!!fromAreaId);
   }, [fromAreaId]);
-
-  async function loadAll() {
-    const [{ data: jobData }, { data: areaData }] = await Promise.all([
-      supabase.from('jobs').select('*').eq('id', jobId).single(),
-      supabase.from('areas').select('id, name, light_rows(*)').eq('job_id', jobId).order('created_at'),
-    ]);
-    if (jobData) setJob(jobData);
-    if (areaData) setAreas(areaData);
-    await loadIssues();
-    setLoading(false);
-  }
-
-  async function loadIssues() {
-    const { data } = await supabase
-      .from('job_issues')
-      .select('*')
-      .eq('job_id', jobId)
-      .order('created_at', { ascending: false });
-    if (data) setIssues(data);
-  }
 
   const areaById = (id: string | null) => areas.find(a => a.id === id);
   const rowsForArea = (id: string | null) =>
@@ -124,69 +114,61 @@ export function useJobIssues() {
     setError('');
     const user = await getCurrentUser();
 
+    // The photo (if any) is kept on the phone and uploads before the issue record does.
     let path: string | null = null;
+    let localUri: string | null = null;
     if (photo) {
       path = photoPath(`${jobId}/issues`, photo);
-      const { error: uploadError } = await uploadToBucket(path, photo);
-      if (uploadError) {
+      const saved = await savePhoto(path, photo);
+      if (saved.error) {
         setSubmitting(false);
-        return setError('The photo could not be uploaded. Check your connection, or remove the photo and try again.');
+        return setError(saved.error);
       }
+      localUri = saved.localUri ?? null;
     }
 
-    const { data, error: insertError } = await supabase
-      .from('job_issues')
-      .insert({
-        job_id: jobId,
-        area_id: formAreaId,
-        light_row_id: formRowId,
-        category,
-        note: note.trim(),
-        photo_path: path,
-        created_by_name: user?.name ?? null,
-      })
-      .select()
-      .single();
+    saveRow('job_issues', {
+      id: newId(),
+      job_id: jobId,
+      area_id: formAreaId,
+      light_row_id: formRowId,
+      category,
+      note: note.trim(),
+      photo_path: path,
+      status: 'open',
+      created_by_name: user?.name ?? null,
+      created_at: new Date().toISOString(),
+      _localUri: localUri,
+    });
 
-    if (insertError || !data) {
-      if (path) await removeFromBucket(path);
-      setSubmitting(false);
-      return setError('The issue could not be saved. Check your connection and try again.');
-    }
-
-    setIssues(prev => [data, ...prev]);
     setFilter(f => (f === 'resolved' ? 'open' : f));
     const label = categoryInfo(category).label;
-    try {
-      await logChange(formAreaId, jobId, user?.id, user?.name, 'issue_logged', `${label}: ${note.trim().slice(0, 80)}`);
-      await notifyJobIssue(job?.name, label, user?.id);
-    } catch (e) { console.log('Issue notify error:', e); }
+    queueCall('logChange', formAreaId, jobId, user?.id, user?.name, 'issue_logged', `${label}: ${note.trim().slice(0, 80)}`);
+    queueCall('notifyJobIssue', job?.name, label, user?.id);
 
     resetForm();
     setFormOpen(false);
     setSubmitting(false);
   }
 
-  async function setResolved(issue: any, resolved: boolean) {
-    const patch = { status: resolved ? 'resolved' : 'open', resolved_at: resolved ? new Date().toISOString() : null };
-    const { error: updateError } = await supabase.from('job_issues').update(patch).eq('id', issue.id);
-    if (updateError) return setError('Could not update the issue. Try again.');
-    setIssues(prev => prev.map(i => (i.id === issue.id ? { ...i, ...patch } : i)));
+  function setResolved(issue: any, resolved: boolean) {
+    patchRow('job_issues', issue.id, { status: resolved ? 'resolved' : 'open', resolved_at: resolved ? new Date().toISOString() : null });
   }
 
-  async function deleteIssue(issue: any) {
-    const { error: deleteError } = await supabase.from('job_issues').delete().eq('id', issue.id);
-    if (deleteError) return setError('Could not delete the issue. Try again.');
-    if (issue.photo_path) await removeFromBucket(issue.photo_path);
-    setIssues(prev => prev.filter(i => i.id !== issue.id));
+  function deleteIssue(issue: any) {
+    deleteRow('job_issues', issue.id);
+    if (issue.photo_path) removePhotoFile(issue.photo_path, issue._localUri);
   }
+
+  // Show an issue's photo from this phone if it's still here, otherwise from online storage.
+  const photoUrl = (path: string) => displayUrl(path, issues.find(i => i.photo_path === path)?._localUri);
 
   const openCount = issues.filter(i => i.status === 'open').length;
   const visibleIssues = issues.filter(i => filter === 'all' || i.status === filter);
   const backHref = fromAreaId ? `/electrician?areaId=${fromAreaId}&jobId=${jobId}` : `/area-list?jobId=${jobId}`;
 
   return {
-    job, areas, loading, filter, setFilter, openCount, visibleIssues, issueLocation, backHref,
+    job, areas, loading, notOnDevice, filter, setFilter, openCount, visibleIssues, issueLocation, backHref,
     formOpen, setFormOpen, category, setCategory, formAreaId, chooseArea, formRowId, setFormRowId,
     rowsForArea, note, setNote, photo, setPhoto, takeIssuePhoto, chooseIssuePhoto,
     submitting, canSubmit, submitIssue, error, setResolved, deleteIssue, photoUrl, resetForm,

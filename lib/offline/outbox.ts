@@ -89,6 +89,16 @@ export function isPending(table: Table, id: string) {
     ((op.kind === 'update' || op.kind === 'delete') && op.table === table && op.id === id));
 }
 
+/** Drops a photo upload that hasn't started yet (e.g. the photo was deleted). Returns true if dropped. */
+export function cancelUpload(path: string) {
+  const before = queue.length;
+  queue = queue.filter(op => !(op.kind === 'upload' && op.path === path && op.opId !== inFlightOpId));
+  if (queue.length === before) return false;
+  notify();
+  persist();
+  return true;
+}
+
 export function pendingUploads() {
   return new Set(queue.filter(op => op.kind === 'upload').map(op => (op as any).path as string));
 }

@@ -23,7 +23,7 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
           onClick={choosePhoto}
           disabled={uploading}
         >
-          {uploading ? 'Uploading…' : '📷 Add photos'}
+          {uploading ? 'Saving…' : '📷 Add photos'}
         </button>
       </div>
 

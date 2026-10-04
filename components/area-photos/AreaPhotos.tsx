@@ -37,7 +37,7 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
       {uploading && (
         <View style={styles.uploadingRow}>
           <ActivityIndicator size="small" color={Colors.blue} />
-          <Text style={styles.uploadingText}>Uploading…</Text>
+          <Text style={styles.uploadingText}>Saving…</Text>
         </View>
       )}
       {!!error && <Text style={styles.error}>{error}</Text>}
@@ -46,7 +46,14 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
           {photos.map(p => (
             <TouchableOpacity key={p.id} onPress={() => setViewing(p)} accessibilityLabel="View photo">
-              <Image source={{ uri: p.url }} style={styles.thumb} contentFit="cover" transition={150} />
+              <View>
+                <Image source={{ uri: p.url }} style={styles.thumb} contentFit="cover" transition={150} />
+                {p.pending && (
+                  <View style={styles.pendingBadge} accessibilityLabel="Waiting to upload">
+                    <Text style={styles.pendingText}>⏳</Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -67,6 +74,8 @@ export default function AreaPhotos({ areaId, jobId }: { areaId?: string; jobId?:
 }
 
 const styles = StyleSheet.create({
+  pendingBadge: { position: 'absolute', right: 4, bottom: 4, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, paddingHorizontal: 5, paddingVertical: 1 },
+  pendingText: { fontSize: 11, color: '#fff' },
   block: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 0.5, borderColor: Colors.borderLight, padding: 14, marginBottom: 10, gap: 10 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   label: { fontSize: 11, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1 },

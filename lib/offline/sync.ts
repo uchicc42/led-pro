@@ -7,6 +7,8 @@ import { supabase } from '../../supabase';
 import { isOnline, subscribeOnline } from './connectivity';
 import { flushOutbox, isPending, loadOutbox, registerCall, registerConflictHandler } from './outbox';
 import { Row, Table, getRow, getSnapshot, loadStore, replaceScope } from './store';
+// Registers the photo upload handler (phone) at startup so queued photos can upload.
+import './files';
 
 // Keeps the device copy fresh: uploads queued changes, then downloads the latest data for
 // active jobs (and any job opened on this device). Runs when signal returns, when the app
@@ -38,6 +40,7 @@ registerCall('notifyAreaComplete', notifyAreaComplete);
 registerCall('notifyJobComplete', notifyJobComplete);
 registerCall('notifyJobNote', notifyJobNote);
 registerCall('notifyJobIssue', notifyJobIssue);
+registerCall('removeStorageFile', (bucket: string, path: string) => supabase.storage.from(bucket).remove([path]));
 
 // ---- conflicts: someone else changed the same fields; keep ours, log both ------------------
 
