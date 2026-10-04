@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { NotOnDevice } from '../ui/not-on-device';
 import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import AreaPhotos from '../area-photos/AreaPhotos';
 import { CONTROL_LABEL } from '../area-entry/useAreaEntry';
@@ -16,11 +17,6 @@ import { withMount } from '../scope-export/useScopeExport';
 import { getStatusLabel, useElectrician } from './useElectrician';
 
 // Native UI. The web UI lives in ElectricianScreen.web.tsx; Metro picks the right file per platform.
-
-async function checkConnectivity() {
-  const response = await fetch('https://www.google.com', { method: 'HEAD' });
-  return response.ok;
-}
 
 const CONTROL_STATUSES = ['pending', 'in_progress', 'complete'];
 const statusColors = (s: string) => ({
@@ -58,9 +54,11 @@ function ControlStatusLine({ control, status, onStatus }: { control: any; status
 export default function ElectricianScreen() {
   const {
     areaId, jobId, area, job, lightRows, notes, setNotes, needsFollowUp, setNeedsFollowUp,
-    loading, saving, isOnlineStatus, getInstallRow, updateInstallRow, save,
+    loading, notOnDevice, saving, savedFlash, isOnlineStatus, getInstallRow, updateInstallRow, save,
     getRowControls, areaLevelControls, getControlStatus, updateControlStatus,
-  } = useElectrician(checkConnectivity);
+  } = useElectrician();
+
+  if (notOnDevice) return <NotOnDevice backHref={`/area-list?jobId=${jobId}`} />;
 
   if (loading) return (
     <View style={styles.center}>
@@ -245,13 +243,13 @@ export default function ElectricianScreen() {
         >
           {saving
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.saveBtnText}>{isOnlineStatus ? 'Save progress' : 'Save offline'}</Text>
+            : <Text style={styles.saveBtnText}>{savedFlash ? '✓ Saved' : isOnlineStatus ? 'Save progress' : 'Save on this phone'}</Text>
           }
         </TouchableOpacity>
 
         {!isOnlineStatus && (
           <Text style={styles.offlineNote}>
-            ⚠️ Offline — changes will sync when connection is restored
+            ⚠️ Offline — changes are saved on this phone and upload when signal returns
           </Text>
         )}
 

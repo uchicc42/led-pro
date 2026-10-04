@@ -2,16 +2,13 @@ import { router } from 'expo-router';
 import type { CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { NotOnDevice } from '../ui/not-on-device';
 import AreaPhotos from '../area-photos/AreaPhotos';
 import { CONTROL_LABEL } from '../area-entry/useAreaEntry';
 import { withMount } from '../scope-export/useScopeExport';
 import { getStatusLabel, useElectrician } from './useElectrician';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses ElectricianScreen.tsx.
-
-async function checkConnectivity() {
-  return navigator.onLine;
-}
 
 const CONTROL_STATUSES = ['pending', 'in_progress', 'complete'];
 const statusColors = (s: string) => ({
@@ -52,9 +49,11 @@ function ControlStatusLine({ control, status, onStatus }: { control: any; status
 export default function ElectricianScreen() {
   const {
     areaId, jobId, area, job, lightRows, notes, setNotes, needsFollowUp, setNeedsFollowUp,
-    loading, saving, isOnlineStatus, getInstallRow, updateInstallRow, save,
+    loading, notOnDevice, saving, savedFlash, isOnlineStatus, getInstallRow, updateInstallRow, save,
     getRowControls, areaLevelControls, getControlStatus, updateControlStatus,
-  } = useElectrician(checkConnectivity);
+  } = useElectrician();
+
+  if (notOnDevice) return <NotOnDevice backHref={`/area-list?jobId=${jobId}`} />;
 
   if (loading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -283,7 +282,7 @@ export default function ElectricianScreen() {
             onClick={save}
             disabled={saving}
           >
-            {saving ? 'Saving...' : isOnlineStatus ? 'Save progress' : 'Save offline'}
+            {saving ? 'Saving...' : savedFlash ? '✓ Saved' : isOnlineStatus ? 'Save progress' : 'Save on this device'}
           </button>
 
           {!isOnlineStatus && (

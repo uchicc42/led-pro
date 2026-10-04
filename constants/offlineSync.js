@@ -1,21 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../supabase';
 
+// Legacy: the electrician screen's old offline queue. Offline changes now go through
+// lib/offline (device copy + upload queue). This only uploads anything still waiting in the
+// old queue from before that change, so no one loses work; it can be deleted once every
+// phone has synced at least once on the new version.
+
 const QUEUE_KEY = 'offline_sync_queue';
 
-// Add an action to the offline queue
-export async function queueAction(action) {
-  try {
-    const existing = await AsyncStorage.getItem(QUEUE_KEY);
-    const queue = existing ? JSON.parse(existing) : [];
-    queue.push({ ...action, timestamp: Date.now() });
-    await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
-  } catch (e) {
-    console.log('Queue error:', e);
-  }
-}
-
-// Process all queued actions when back online
 export async function syncQueue() {
   try {
     const existing = await AsyncStorage.getItem(QUEUE_KEY);
@@ -33,7 +25,7 @@ export async function syncQueue() {
         } else if (action.type === 'update_control') {
           await supabase.from('area_controls').update(action.data).eq('id', action.id);
         }
-      } catch (e) {
+      } catch {
         failed.push(action);
       }
     }
@@ -41,52 +33,6 @@ export async function syncQueue() {
     // Keep only failed actions in queue
     await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(failed));
   } catch (e) {
-    console.log('Sync error:', e);
-  }
-}
-
-// Check if device is online
-export async function isOnline() {
-  if (typeof navigator !== 'undefined' && 'onLine' in navigator) {
-    return navigator.onLine;
-  }
-  try {
-    const response = await fetch('https://www.google.com', { method: 'HEAD' });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
-// Save install data — online goes direct, offline goes to queue
-export async function saveInstallData(areaId, data) {
-  const online = await isOnline();
-  if (online) {
-    await supabase.from('areas').update(data).eq('id', areaId);
-    await syncQueue(); // Sync any previously queued items too
-  } else {
-    await queueAction({ type: 'update_area', id: areaId, data });
-  }
-}
-
-export async function saveInstallRow(rowData) {
-  const online = await isOnline();
-  if (online) {
-    await supabase.from('install_rows').upsert(rowData);
-    await syncQueue();
-  } else {
-    await queueAction({ type: 'upsert_install_row', data: rowData });
-  }
-}
-
-// Save a sensor/photocell install status — online goes direct, offline goes to queue
-export async function saveControlStatus(controlId, installStatus) {
-  const data = { install_status: installStatus };
-  const online = await isOnline();
-  if (online) {
-    await supabase.from('area_controls').update(data).eq('id', controlId);
-    await syncQueue();
-  } else {
-    await queueAction({ type: 'update_control', id: controlId, data });
+    console.log('Legacy sync error:', e);
   }
 }
