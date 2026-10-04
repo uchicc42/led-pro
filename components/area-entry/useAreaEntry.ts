@@ -1,5 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ensureLightTypeColors } from '../../constants/lightTypeColors';
 import { logChange } from '../../constants/notifications';
 import { getCurrentUser } from '../../constants/userStore';
@@ -86,6 +86,16 @@ export function useAreaEntry() {
     setLoading(true);
     loadAll();
   }, [areaId]);
+
+  // Job settings and Settings can change switches/types while this screen stays mounted.
+  // Rows are not reloaded here so unsaved entries aren't lost.
+  useFocusEffect(
+    useCallback(() => {
+      loadJob();
+      loadLightTypes();
+      loadControlTypes();
+    }, [jobId])
+  );
 
   async function loadAll() {
     await Promise.all([loadArea(), loadJob(), loadLightTypes(), loadControlTypes(), loadExistingRows()]);

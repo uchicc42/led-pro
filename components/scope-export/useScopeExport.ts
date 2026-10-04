@@ -1,5 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { NO_TYPE_COLOR, colorMap, ensureLightTypeColors, tintOf } from '../../constants/lightTypeColors';
 import { supabase } from '../../supabase';
 import { CONTROL_LABEL, ControlKind } from '../area-entry/useAreaEntry';
@@ -11,9 +11,12 @@ export function useScopeExport() {
   const [loading, setLoading] = useState(true);
   const [typeColors, setTypeColors] = useState<Map<string, string>>(new Map());
 
-  useEffect(() => {
-    loadAll();
-  }, [jobId]);
+  // Read-only screen: reload everything each time it's shown.
+  useFocusEffect(
+    useCallback(() => {
+      loadAll();
+    }, [jobId])
+  );
 
   async function loadAll() {
     const { data: jobData } = await supabase

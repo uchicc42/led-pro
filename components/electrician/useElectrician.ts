@@ -1,5 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { saveControlStatus, saveInstallData, saveInstallRow, syncQueue } from '../../constants/offlineSync';
 import { supabase } from '../../supabase';
 
@@ -25,6 +25,14 @@ export function useElectrician(checkConnectivity: () => Promise<boolean>) {
     const interval = setInterval(checkOnline, 10000);
     return () => clearInterval(interval);
   }, [areaId]);
+
+  // Refresh job switches and sensors/photocells on return; unsaved install statuses are kept.
+  useFocusEffect(
+    useCallback(() => {
+      loadJob();
+      loadControls();
+    }, [areaId, jobId])
+  );
 
   async function checkOnline() {
     try {

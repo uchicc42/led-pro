@@ -45,6 +45,7 @@ export function useAreaList({ live, initialUser }: Options) {
 
   useFocusEffect(
     useCallback(() => {
+      loadJob();
       loadAreas();
       loadOpenIssues();
     }, [jobId])

@@ -1,5 +1,5 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { logChange } from '../../constants/notifications';
 import { getCurrentUser } from '../../constants/userStore';
 import { supabase } from '../../supabase';
@@ -20,9 +20,12 @@ export function useJobSettings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    loadJob();
-  }, [jobId]);
+  // Show the saved values each time the screen opens (it stays mounted between visits).
+  useFocusEffect(
+    useCallback(() => {
+      loadJob();
+    }, [jobId])
+  );
 
   async function loadJob() {
     setLoading(true);

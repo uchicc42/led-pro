@@ -1,6 +1,6 @@
 import type { ImagePickerAsset } from 'expo-image-picker';
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { logChange, notifyJobIssue } from '../../constants/notifications';
 import { getCurrentUser } from '../../constants/userStore';
 import { supabase } from '../../supabase';
@@ -46,9 +46,17 @@ export function useJobIssues() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  useFocusEffect(
+    useCallback(() => {
+      loadAll();
+    }, [jobId])
+  );
+
   useEffect(() => {
-    loadAll();
-  }, [jobId]);
+    setFormAreaId(fromAreaId ?? null);
+    setFormRowId(null);
+    setFormOpen(!!fromAreaId);
+  }, [fromAreaId]);
 
   async function loadAll() {
     const [{ data: jobData }, { data: areaData }] = await Promise.all([
