@@ -1,5 +1,5 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { logChange } from '../../constants/notifications';
 import { getCurrentUser } from '../../constants/userStore';
 import { supabase } from '../../supabase';
@@ -26,10 +26,10 @@ export function useJobSettings() {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [savedFlash, setSavedFlash] = useState(false);
-  const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [savedCount, setSavedCount] = useState(0);
+  const savedFlash = savedCount > 0;
   // Last saved name/location/date, to tell whether the details have unsaved edits.
-  const savedDetails = useRef({ name: '', location: '', date: '' });
+  const [savedDetails, setSavedDetails] = useState({ name: '', location: '', date: '' });
 
   // Show the saved values each time the screen opens (it stays mounted between visits).
   useFocusEffect(
@@ -46,7 +46,7 @@ export function useJobSettings() {
       setName(data.name || '');
       setLocation(data.location || '');
       setDate(data.date || '');
-      savedDetails.current = { name: data.name || '', location: data.location || '', date: data.date || '' };
+      setSavedDetails({ name: data.name || '', location: data.location || '', date: data.date || '' });
       setModeState(data.mode === 'electrician' ? 'electrician' : 'counting');
       setFeatures({
         col_sensor: !!data.col_sensor,
@@ -58,11 +58,16 @@ export function useJobSettings() {
     setLoading(false);
   }
 
+  // Each save bumps the counter, which restarts the timer that hides "Saved".
   function flashSaved() {
-    setSavedFlash(true);
-    clearTimeout(flashTimer.current);
-    flashTimer.current = setTimeout(() => setSavedFlash(false), 1500);
+    setSavedCount(n => n + 1);
   }
+
+  useEffect(() => {
+    if (savedCount === 0) return;
+    const timer = setTimeout(() => setSavedCount(0), 1500);
+    return () => clearTimeout(timer);
+  }, [savedCount]);
 
   async function log(description: string) {
     try {
@@ -81,7 +86,7 @@ export function useJobSettings() {
       return setError('Could not save that change. Check your connection and try again.');
     }
     flashSaved();
-    log(`${FEATURE_LABEL[field]} turned ${value ? 'on' : 'off'} for ${savedDetails.current.name}`);
+    log(`${FEATURE_LABEL[field]} turned ${value ? 'on' : 'off'} for ${savedDetails.name}`);
   }
 
   async function setMode(value: Mode) {
@@ -95,14 +100,14 @@ export function useJobSettings() {
       return setError('Could not save that change. Check your connection and try again.');
     }
     flashSaved();
-    log(`Mode changed to ${value} for ${savedDetails.current.name}`);
+    log(`Mode changed to ${value} for ${savedDetails.name}`);
   }
 
   const isReady = !!(name.trim() && location.trim() && date);
   const detailsDirty =
-    name.trim() !== savedDetails.current.name ||
-    location.trim() !== savedDetails.current.location ||
-    date !== savedDetails.current.date;
+    name.trim() !== savedDetails.name ||
+    location.trim() !== savedDetails.location ||
+    date !== savedDetails.date;
   const backHref = `/area-list?jobId=${jobId}`;
 
   // Saves name/location/date. Returns true on success.
@@ -119,7 +124,7 @@ export function useJobSettings() {
       setError('Failed to save job details. Please try again.');
       return false;
     }
-    savedDetails.current = { name: name.trim(), location: location.trim(), date };
+    setSavedDetails({ name: name.trim(), location: location.trim(), date });
     log(`Job details updated for ${name.trim()}`);
     return true;
   }
