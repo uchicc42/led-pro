@@ -136,7 +136,8 @@ export function useAreaEntry() {
     if (loadedFor !== areaId) { setLoadedFor(areaId); setDirty(false); }
   }, [store.version, areaId, dirty]);
 
-  const lightTypeRows = store.all('light_types').sort(bySort);
+  // Archived types (inactive or deleted in QuickBooks) aren't offered for new entries.
+  const lightTypeRows = store.all('light_types').filter(t => !t.archived).sort(bySort);
   const lightTypes = {
     current: lightTypeRows.filter(t => t.category === 'current').map(t => t.name as string),
     new: lightTypeRows.filter(t => t.category === 'new').map(t => t.name as string),

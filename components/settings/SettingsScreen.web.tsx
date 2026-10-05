@@ -4,6 +4,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { LIGHT_TYPE_PALETTE } from '../../constants/lightTypeColors';
 import { clearCurrentUser } from '../../constants/userStore';
+import QuickBooksSection from './QuickBooksSection';
 import TeamSection from './TeamSection';
 import { useSettings } from './useSettings';
 
@@ -33,7 +34,9 @@ export default function SettingsScreen() {
         {t.name}
         {(t.mount_options || []).length > 0 && <span style={webStyles.tagMeta}>· {t.mount_options.length} mounts</span>}
       </span>
-      <span style={webStyles.tagDel} onClick={() => confirmDelete(t.id, t.name)}>✕</span>
+      {t.quickbooks_item_id
+        ? <span style={webStyles.qbBadge} title={`From QuickBooks${t.product_code ? ` (${t.product_code})` : ''}: rename or remove it there, then sync`}>QB</span>
+        : <span style={webStyles.tagDel} onClick={() => confirmDelete(t.id, t.name)}>✕</span>}
     </div>
   );
 
@@ -188,6 +191,9 @@ export default function SettingsScreen() {
           )}
         </div>
 
+        {/* QUICKBOOKS */}
+        <QuickBooksSection />
+
         {/* TEAM MEMBERS */}
         <TeamSection />
 
@@ -249,7 +255,10 @@ export default function SettingsScreen() {
         <div style={webStyles.modalOverlay} onClick={() => setEditingTypeId(null)}>
           <div style={webStyles.modalCard} onClick={e => e.stopPropagation()}>
             <div style={webStyles.modalHeader}>
-              <div style={webStyles.modalTitle}>{editingType.name}</div>
+              <div>
+                <div style={webStyles.modalTitle}>{editingType.name}</div>
+                {editingType.product_code && <div style={webStyles.productCode}>QuickBooks product: {editingType.product_code}</div>}
+              </div>
               <button style={webStyles.modalDone} onClick={() => setEditingTypeId(null)}>Done</button>
             </div>
 
@@ -298,6 +307,8 @@ export default function SettingsScreen() {
 }
 
 const webStyles: Record<string, CSSProperties> = {
+  productCode: { fontSize: 12, color: Colors.textTertiary, marginTop: 2 },
+  qbBadge: { fontSize: 9, fontWeight: '700', color: '#2CA01C', border: '0.5px solid #2CA01C', borderRadius: 4, padding: '0 3px', marginLeft: 4 },
   tagName: { display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' },
   tagMeta: { fontSize: 11, color: Colors.textTertiary },
   swatchDot: { width: 10, height: 10, borderRadius: 5, display: 'inline-block' },
