@@ -59,27 +59,24 @@ Deno.serve(async (req) => {
   const { data: connection } = await admin.from('qb_connection').select('*').eq('id', 1).maybeSingle();
   if (!connection) return reply(409, { error: 'not_connected' });
 
-  // Renew the access token when it's about to expire (QuickBooks tokens last an hour; the
-  // refresh token rolls forward and must be saved each time).
-  let accessToken: string = connection.access_token;
-  if (new Date(connection.access_expires_at).getTime() < Date.now() + 5 * 60 * 1000) {
+  // Renews the access token (QuickBooks tokens last an hour; the refresh token rolls forward
+  // and must be saved each time). Returns null, and marks the connection as needing to be
+  // reconnected, if QuickBooks refuses (expired/revoked refresh token, invalid grant).
+  let refreshToken: string = connection.refresh_token;
+  async function renew(): Promise<string | null> {
     const basic = btoa(`${Deno.env.get('QB_CLIENT_ID')}:${Deno.env.get('QB_CLIENT_SECRET')}`);
     const res = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
       method: 'POST',
       headers: { Authorization: `Basic ${basic}`, Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: connection.refresh_token }),
+      body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken }),
     });
     if (!res.ok) {
-      // The owner needs to connect again (e.g. access revoked in QuickBooks).
-      await admin.from('qb_connection').update({
-        refresh_expires_at: new Date().toISOString(),
-        last_sync_result: 'QuickBooks needs to be reconnected',
-      }).eq('id', 1);
-      return reply(409, { error: 'reconnect_needed' });
+      await markReconnectNeeded();
+      return null;
     }
     const tokens = await res.json();
-    accessToken = tokens.access_token;
     const now = Date.now();
+    refreshToken = tokens.refresh_token;
     await admin.from('qb_connection').update({
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
@@ -88,16 +85,44 @@ Deno.serve(async (req) => {
         ? new Date(now + tokens.x_refresh_token_expires_in * 1000).toISOString()
         : connection.refresh_expires_at,
     }).eq('id', 1);
+    return tokens.access_token;
   }
 
-  // Every non-inventory item, active and inactive, a page at a time.
+  async function markReconnectNeeded() {
+    await admin.from('qb_connection').update({
+      refresh_expires_at: new Date().toISOString(),
+      last_sync_result: 'QuickBooks needs to be reconnected',
+    }).eq('id', 1);
+  }
+
+  // Renew ahead of time when the token is about to expire.
+  let accessToken: string | null = connection.access_token;
+  if (new Date(connection.access_expires_at).getTime() < Date.now() + 5 * 60 * 1000) {
+    accessToken = await renew();
+    if (!accessToken) return reply(409, { error: 'reconnect_needed' });
+  }
+
+  // Every non-inventory item, active and inactive, a page at a time. If QuickBooks rejects the
+  // token anyway (e.g. revoked early), renew once and retry; if that fails, ask to reconnect.
   const items: QbItem[] = [];
+  let renewedAfterRejection = false;
   for (let start = 1; ; start += 1000) {
     const query = `select Id, Name, Description, Type, Active from Item where Type = 'NonInventory' and Active in (true, false) startposition ${start} maxresults 1000`;
     const res = await fetch(
       `${API(connection.environment)}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(query)}&minorversion=75`,
       { headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' } },
     );
+    if (res.status === 401) {
+      if (renewedAfterRejection) {
+        await markReconnectNeeded();
+        return reply(409, { error: 'reconnect_needed' });
+      }
+      renewedAfterRejection = true;
+      accessToken = await renew();
+      if (!accessToken) return reply(409, { error: 'reconnect_needed' });
+      start -= 1000; // retry the same page
+      continue;
+    }
     if (!res.ok) {
       await admin.from('qb_connection').update({ last_sync_result: `Sync failed (QuickBooks ${res.status})` }).eq('id', 1);
       return reply(502, { error: 'quickbooks_error', status: res.status });
