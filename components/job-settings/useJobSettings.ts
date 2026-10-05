@@ -1,6 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { getCurrentUser } from '../../constants/userStore';
+import { LAYOUT_CANVAS_ENABLED } from '../../constants/features';
 import { useOnline } from '../../lib/offline/connectivity';
 import { patchRow, queueCall } from '../../lib/offline/data';
 import { useStore } from '../../lib/offline/store';
@@ -120,7 +121,9 @@ export function useJobSettings() {
     router.push(backHref as any);
   }
 
-  const columns = (Object.keys(FEATURE_LABEL) as FeatureField[]).map(field => ({
+  const columns = (Object.keys(FEATURE_LABEL) as FeatureField[])
+    .filter(field => field !== 'col_layout' || LAYOUT_CANVAS_ENABLED)
+    .map(field => ({
     field,
     label: field === 'col_layout' ? 'Room layout / exhibit' : field === 'col_hours' ? 'Hours-based flag' : FEATURE_LABEL[field],
     sub: {

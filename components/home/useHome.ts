@@ -54,6 +54,10 @@ export function useHome({ live, initialUser }: Options) {
     });
   const loading = !store.loaded && jobs.length === 0;
 
+  const hour = new Date().getHours();
+  const firstName = (currentUser?.name || '').split(' ')[0];
+  const greeting = (hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening') + (firstName ? ', ' + firstName : '');
+
   const activeJobs = jobs.filter(j => j.status !== 'complete');
   const completedToday = jobs.filter(j => {
     const today = new Date().toDateString();
@@ -61,7 +65,7 @@ export function useHome({ live, initialUser }: Options) {
   }).length;
   const installingCount = jobs.filter(j => j.mode === 'electrician' && j.status !== 'complete').length;
 
-  return { jobs, loading, currentUser, activeJobs, completedToday, installingCount };
+  return { jobs, loading, currentUser, greeting, activeJobs, completedToday, installingCount };
 }
 
 export function getStatusColor(job: any) {

@@ -262,36 +262,7 @@ export default function SettingsScreen() {
               </div>
             ))}
             <div style={webStyles.comingSoonNote}>
-              📱 Push notifications require the Expo Go app on mobile. Enable once and notifications arrive automatically.
-            </div>
-          </div>
-        </div>
-
-        {/* INTEGRATIONS */}
-        <div style={webStyles.section}>
-          <div style={webStyles.sectionHeader}>
-            <div style={webStyles.sectionHeaderLeft}>
-              <div style={webStyles.sectionIcon}>🔗</div>
-              <div>
-                <div style={webStyles.sectionTitle}>Integrations</div>
-                <div style={webStyles.sectionSub}>Connect external services</div>
-              </div>
-            </div>
-          </div>
-          <div style={webStyles.expandPanel}>
-            <div style={webStyles.integrationRow}>
-              <div>
-                <div style={webStyles.integrationName}>QuickBooks</div>
-                <div style={webStyles.integrationSub}>Sync light types from your product list</div>
-              </div>
-              <div style={webStyles.comingSoonBadge}>Coming in V2</div>
-            </div>
-            <div style={webStyles.integrationRow}>
-              <div>
-                <div style={webStyles.integrationName}>Push notifications</div>
-                <div style={webStyles.integrationSub}>Job reminders for team and customers</div>
-              </div>
-              <div style={webStyles.comingSoonBadge}>Coming in V2</div>
+              📱 Notifications are sent to phones where they have been turned on in the LED Pro app (Settings → Notifications).
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { getCurrentUser } from '../../constants/userStore';
+import { LAYOUT_CANVAS_ENABLED } from '../../constants/features';
 import { newId, saveRow } from '../../lib/offline/data';
 
 export function useNewJob() {
@@ -56,7 +57,7 @@ export function useNewJob() {
   const columns = [
     { label: 'Occupancy sensor', sub: 'Sensors per light row and per area', val: colSensor, set: setColSensor },
     { label: 'Photocell', sub: 'Photocells per light row and per area', val: colPhotocell, set: setColPhotocell },
-    { label: 'Room layout / exhibit', sub: 'Ceiling diagram per area', val: colLayout, set: setColLayout },
+    ...(LAYOUT_CANVAS_ENABLED ? [{ label: 'Room layout / exhibit', sub: 'Ceiling diagram per area', val: colLayout, set: setColLayout }] : []),
     { label: 'Hours-based flag', sub: 'Color-code limited-hour lights', val: colHours, set: setColHours },
   ];
 

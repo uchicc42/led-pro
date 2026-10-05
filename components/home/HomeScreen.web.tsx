@@ -16,7 +16,7 @@ function readStoredSession() {
 }
 
 export default function HomeScreen() {
-  const { jobs, loading, currentUser, activeJobs, completedToday, installingCount } =
+  const { jobs, loading, currentUser, greeting, activeJobs, completedToday, installingCount } =
     useHome({ live: 'poll', initialUser: readStoredSession });
 
   if (loading) return (
@@ -30,7 +30,7 @@ export default function HomeScreen() {
       <div style={webStyles.container}>
         <div style={webStyles.header}>
           <div>
-            <div style={webStyles.greeting}>Good morning,</div>
+            <div style={webStyles.greeting}>{greeting}</div>
             <div style={webStyles.headerTitle}>LED Pro Dashboard</div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>

@@ -13,7 +13,7 @@ import { getAreaProgress, getModeLabel, getStatusColor, getStatusLabel, useHome 
 // Native UI. The web UI lives in HomeScreen.web.tsx; Metro picks the right file per platform.
 
 export default function HomeScreen() {
-  const { jobs, loading, currentUser, activeJobs, completedToday, installingCount } = useHome({ live: 'realtime' });
+  const { jobs, loading, currentUser, greeting, activeJobs, completedToday, installingCount } = useHome({ live: 'realtime' });
 
   if (loading) return (
     <View style={styles.center}>
@@ -26,7 +26,7 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Good morning,</Text>
+            <Text style={styles.greeting}>{greeting}</Text>
             <Text style={styles.headerTitle}>LED Pro</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { LAYOUT_CANVAS_ENABLED } from '../../constants/features';
 import { NotOnDevice } from '../ui/not-on-device';
 import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import AreaPhotos from '../area-photos/AreaPhotos';
@@ -343,7 +344,7 @@ export default function AreaEntryScreen() {
           </View>
         )}
 
-        {job?.col_layout && (
+        {LAYOUT_CANVAS_ENABLED && job?.col_layout && (
           <TouchableOpacity
             style={styles.layoutBtn}
             onPress={() => router.push(layoutCanvasHref as any)}

@@ -249,15 +249,6 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* INTEGRATIONS */}
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionIcon}>🔗</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>Integrations</Text>
-            <Text style={styles.sectionSub}>QuickBooks sync — coming in V2</Text>
-          </View>
-        </View>
-
         {/* LOG OUT */}
         <TouchableOpacity
           style={styles.sectionRow}

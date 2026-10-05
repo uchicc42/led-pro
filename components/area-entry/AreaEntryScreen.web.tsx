@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState, type CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { LAYOUT_CANVAS_ENABLED } from '../../constants/features';
 import { NotOnDevice } from '../ui/not-on-device';
 import AreaPhotos from '../area-photos/AreaPhotos';
 import { CONTROL_LABEL, ControlKind, LUMEN_OPTIONS, PickerTarget, useAreaEntry } from './useAreaEntry';
@@ -335,7 +336,7 @@ export default function AreaEntryScreen() {
           <div style={webStyles.divider} />
 
           {/* Layout link */}
-          {job?.col_layout && (
+          {LAYOUT_CANVAS_ENABLED && job?.col_layout && (
             <>
               <div style={webStyles.sectionLabel}>Layout / exhibit</div>
               <button

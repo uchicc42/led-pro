@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { LAYOUT_CANVAS_ENABLED } from '../../constants/features';
 import { NotOnDevice } from '../ui/not-on-device';
 import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import AreaPhotos from '../area-photos/AreaPhotos';
@@ -214,7 +215,7 @@ export default function ElectricianScreen() {
           <Text style={[styles.layoutBtnText, { color: '#712B13' }]}>⚠️ Log an issue (bad light, change…)</Text>
         </TouchableOpacity>
 
-        {job?.col_layout && (
+        {LAYOUT_CANVAS_ENABLED && job?.col_layout && (
           <TouchableOpacity
             style={styles.layoutBtn}
             onPress={() => router.push(`/layout-canvas?areaId=${areaId}&jobId=${jobId}&areaName=${area?.name}`)}

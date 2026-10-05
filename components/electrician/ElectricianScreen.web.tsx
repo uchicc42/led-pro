@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import type { CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { LAYOUT_CANVAS_ENABLED } from '../../constants/features';
 import { NotOnDevice } from '../ui/not-on-device';
 import AreaPhotos from '../area-photos/AreaPhotos';
 import { CONTROL_LABEL } from '../area-entry/useAreaEntry';
@@ -252,7 +253,7 @@ export default function ElectricianScreen() {
           </button>
 
           {/* Layout link */}
-          {job?.col_layout && (
+          {LAYOUT_CANVAS_ENABLED && job?.col_layout && (
             <>
               <div style={webStyles.divider} />
               <button

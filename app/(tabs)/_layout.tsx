@@ -7,7 +7,6 @@ export default function TabLayout() {
       tabBarStyle: { display: 'none' },
     }}>
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="explore" />
       <Tabs.Screen name="home" />
       <Tabs.Screen name="new-job" />
       <Tabs.Screen name="area-list" />
