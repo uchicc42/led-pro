@@ -8,7 +8,7 @@ import { Colors } from '../../constants/Colors';
 export const LEGAL = {
   appName: 'LED Pro',
   operator: 'Triple E Solutions LLC',
-  contactEmail: 'REPLACE_WITH_CONTACT_EMAIL',
+  contactEmail: 'uchicc@sbcglobal.net',
   effectiveDate: 'October 5, 2026',
   website: 'https://led-pro.expo.app',
 };
