@@ -24,6 +24,9 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        {/* Public pages (no login), linked from the QuickBooks app listing. */}
+        <Stack.Screen name="privacy" options={{ headerShown: false, title: 'Privacy Policy' }} />
+        <Stack.Screen name="terms" options={{ headerShown: false, title: 'Terms of Use' }} />
       </Stack>
       <SyncStatusBar />
       <StatusBar style="auto" />
