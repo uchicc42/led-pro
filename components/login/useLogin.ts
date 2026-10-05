@@ -15,6 +15,9 @@ export function useLogin(beforeLogin?: () => void) {
   const online = useOnline();
   const [members, setMembers] = useState<any[]>([]);
   const [membersLoaded, setMembersLoaded] = useState(false);
+  // Bumped each time the screen is shown, so the team list is re-read (members can be added
+  // or removed while this screen stays mounted in the background).
+  const [visits, setVisits] = useState(0);
   const [selected, setSelected] = useState<any>(null);
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -31,23 +34,25 @@ export function useLogin(beforeLogin?: () => void) {
       });
       setPin('');
       setError('');
+      setVisits(v => v + 1);
     }, [])
   );
 
-  // The team list needs signal; it loads as soon as there is some.
+  // The team list needs signal; it loads when the screen is shown and when signal returns.
   useEffect(() => {
-    if (!online || membersLoaded) return;
+    if (!online) return;
     let cancelled = false;
     (async () => {
       // Names and colours only: PINs are checked on the server.
       const { data } = await supabase.from('login_members').select('*').order('created_at');
       if (cancelled || !data) return;
       setMembers(data);
-      setSelected((s: any) => s ?? data[0]);
+      // Keep the current choice if that person is still on the team, otherwise pick the first.
+      setSelected((s: any) => data.find((m: any) => m.id === s?.id) ?? data[0] ?? null);
       setMembersLoaded(true);
     })();
     return () => { cancelled = true; };
-  }, [online, membersLoaded]);
+  }, [online, visits]);
 
   // Only logins made with the current (server-checked) method can continue without a PIN.
   const canContinue = !!storedUser && storedUser.authVersion === AUTH_VERSION;

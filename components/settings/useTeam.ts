@@ -2,7 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { LIGHT_TYPE_PALETTE } from '../../constants/lightTypeColors';
 import { getCurrentUser } from '../../constants/userStore';
-import { useOnline } from '../../lib/offline/connectivity';
+import { isOnline, useOnline } from '../../lib/offline/connectivity';
 import { syncNow } from '../../lib/offline/sync';
 import { supabase } from '../../supabase';
 
@@ -69,10 +69,12 @@ export function useTeam() {
     }
   }, []);
 
+  // Re-read on every visit: the screen stays mounted, and the team may have changed elsewhere.
   useFocusEffect(
     useCallback(() => {
       getCurrentUser().then(setMe);
-    }, [])
+      if (isOnline()) load();
+    }, [load])
   );
 
   useEffect(() => {
