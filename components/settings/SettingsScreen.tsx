@@ -18,6 +18,7 @@ import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import { LIGHT_TYPE_PALETTE } from '../../constants/lightTypeColors';
 import { registerForPushNotifications } from '../../constants/notifications';
 import { clearCurrentUser, getCurrentUser } from '../../constants/userStore';
+import QuickBooksSection from './QuickBooksSection';
 import TeamSection from './TeamSection';
 import { useSettings } from './useSettings';
 
@@ -41,6 +42,7 @@ export default function SettingsScreen() {
       <View style={styles.tagInner}>
         {t.category === 'new' && <View style={[styles.swatchDot, { backgroundColor: t.color || '#ccc' }]} />}
         <Text style={styles.tagText}>{t.name}</Text>
+        {!!t.quickbooks_item_id && <Text style={styles.qbBadge}>QB</Text>}
         {(t.mount_options || []).length > 0 && <Text style={styles.tagMeta}>· {t.mount_options.length} mounts</Text>}
       </View>
     </TouchableOpacity>
@@ -176,6 +178,9 @@ export default function SettingsScreen() {
           </View>
         )}
 
+        {/* QUICKBOOKS */}
+        <QuickBooksSection />
+
         {/* TEAM MEMBERS */}
         <TeamSection />
 
@@ -298,9 +303,13 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={styles.deleteTypeBtn} onPress={() => confirmDelete(editingType.id, editingType.name)}>
-                <Text style={styles.deleteTypeText}>Remove this light type</Text>
-              </TouchableOpacity>
+              {editingType.quickbooks_item_id ? (
+                <Text style={styles.qbNote}>From QuickBooks: rename or remove it there, then sync.</Text>
+              ) : (
+                <TouchableOpacity style={styles.deleteTypeBtn} onPress={() => confirmDelete(editingType.id, editingType.name)}>
+                  <Text style={styles.deleteTypeText}>Remove this light type</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
           </KeyboardAvoidingView>
@@ -311,6 +320,8 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  qbBadge: { fontSize: 9, fontWeight: '700', color: '#2CA01C', borderWidth: 0.5, borderColor: '#2CA01C', borderRadius: 4, paddingHorizontal: 3 },
+  qbNote: { fontSize: 12, color: Colors.textTertiary, textAlign: 'center', marginTop: 20 },
   tagInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tagMeta: { fontSize: 11, color: Colors.textTertiary },
   swatchDot: { width: 10, height: 10, borderRadius: 5 },

@@ -148,8 +148,8 @@ export function useSettings() {
 
   const editingType = lightTypes.find(t => t.id === editingTypeId) ?? null;
 
-  const currentTypes = lightTypes.filter(t => t.category === 'current');
-  const newTypes = lightTypes.filter(t => t.category === 'new');
+  const currentTypes = lightTypes.filter(t => t.category === 'current' && !t.archived);
+  const newTypes = lightTypes.filter(t => t.category === 'new' && !t.archived);
   const sensorTypes = controlTypes.filter(t => t.kind === 'occupancy');
   const photocellTypes = controlTypes.filter(t => t.kind === 'photocell');
 
