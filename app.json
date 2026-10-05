@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "led-pro",
+    "name": "LED Pro",
     "slug": "led-pro",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,11 @@
     "scheme": "ledpro",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.uchicc42.ledpro",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +21,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.uchicc42.ledpro"
     },
     "web": {
       "output": "static",
