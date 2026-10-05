@@ -30,6 +30,15 @@ const API = (env: string) =>
 
 type QbItem = { Id: string; Name: string; Description?: string; Type: string; Active: boolean };
 
+// Writes a failed QuickBooks response to the function logs (Edge Functions → qb-sync → Logs),
+// including Intuit's intuit_tid so their support can trace the request. Returns the tid.
+async function logQbError(step: string, res: Response): Promise<string | null> {
+  const tid = res.headers.get('intuit_tid');
+  const body = await res.text().catch(() => '');
+  console.error(JSON.stringify({ step, status: res.status, intuit_tid: tid, body: body.slice(0, 2000) }));
+  return tid;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return reply(405, { error: 'method_not_allowed' });
@@ -71,6 +80,7 @@ Deno.serve(async (req) => {
       body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken }),
     });
     if (!res.ok) {
+      await logQbError('refresh_token', res);
       await markReconnectNeeded();
       return null;
     }
@@ -113,6 +123,7 @@ Deno.serve(async (req) => {
       { headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' } },
     );
     if (res.status === 401) {
+      await logQbError('item_query', res);
       if (renewedAfterRejection) {
         await markReconnectNeeded();
         return reply(409, { error: 'reconnect_needed' });
@@ -124,8 +135,11 @@ Deno.serve(async (req) => {
       continue;
     }
     if (!res.ok) {
-      await admin.from('qb_connection').update({ last_sync_result: `Sync failed (QuickBooks ${res.status})` }).eq('id', 1);
-      return reply(502, { error: 'quickbooks_error', status: res.status });
+      const tid = await logQbError('item_query', res);
+      await admin.from('qb_connection').update({
+        last_sync_result: `Sync failed (QuickBooks ${res.status}${tid ? `, ref ${tid}` : ''})`,
+      }).eq('id', 1);
+      return reply(502, { error: 'quickbooks_error', status: res.status, intuit_tid: tid });
     }
     const page: QbItem[] = (await res.json())?.QueryResponse?.Item ?? [];
     items.push(...page);

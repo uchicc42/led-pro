@@ -13,6 +13,13 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const API = (env: string) =>
   env === 'sandbox' ? 'https://sandbox-quickbooks.api.intuit.com' : 'https://quickbooks.api.intuit.com';
 
+// Writes a failed QuickBooks response to the function logs (Edge Functions → qb-callback →
+// Logs), including Intuit's intuit_tid so their support can trace the request.
+async function logQbError(step: string, res: Response) {
+  const body = await res.text().catch(() => '');
+  console.error(JSON.stringify({ step, status: res.status, intuit_tid: res.headers.get('intuit_tid'), body: body.slice(0, 2000) }));
+}
+
 Deno.serve(async (req) => {
   const appUrl = (Deno.env.get('APP_URL') ?? 'https://led-pro.expo.app').replace(/\/$/, '');
   const back = (status: string) => Response.redirect(`${appUrl}/settings?quickbooks=${status}`, 302);
@@ -21,7 +28,10 @@ Deno.serve(async (req) => {
   const code = params.get('code');
   const state = params.get('state');
   const realmId = params.get('realmId');
-  if (params.get('error')) return back('cancelled');
+  if (params.get('error')) {
+    console.error(JSON.stringify({ step: 'authorize', error: params.get('error') }));
+    return back('cancelled');
+  }
   if (!code || !state || !realmId) return back('error');
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -40,7 +50,10 @@ Deno.serve(async (req) => {
     headers: { Authorization: `Basic ${basic}`, Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: Deno.env.get('QB_REDIRECT_URI')! }),
   });
-  if (!tokenRes.ok) return back('error');
+  if (!tokenRes.ok) {
+    await logQbError('token_exchange', tokenRes);
+    return back('error');
+  }
   const tokens = await tokenRes.json();
 
   const environment = Deno.env.get('QB_ENVIRONMENT') === 'sandbox' ? 'sandbox' : 'production';
@@ -49,6 +62,7 @@ Deno.serve(async (req) => {
     headers: { Authorization: `Bearer ${tokens.access_token}`, Accept: 'application/json' },
   });
   if (infoRes.ok) companyName = (await infoRes.json())?.CompanyInfo?.CompanyName ?? null;
+  else await logQbError('company_info', infoRes);
 
   const now = Date.now();
   const { error } = await admin.from('qb_connection').upsert({
@@ -65,7 +79,10 @@ Deno.serve(async (req) => {
     connected_by: started.member_id,
     connected_at: new Date(now).toISOString(),
   });
-  if (error) return back('error');
+  if (error) {
+    console.error(JSON.stringify({ step: 'save_connection', error: error.message }));
+    return back('error');
+  }
 
   // First sync straight away (best effort; "Sync now" can be used if it fails).
   const syncName = Deno.env.get('QB_SYNC_FUNCTION') ?? 'qb-sync';

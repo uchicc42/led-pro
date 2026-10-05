@@ -1,5 +1,6 @@
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { LEGAL } from '../legal/LegalPage';
 import { formatWhen, useQuickBooks } from './useQuickBooks';
 
 // QuickBooks section of Settings (phone). Connecting is done once from the web version,
@@ -61,6 +62,12 @@ export default function QuickBooksSection() {
 
       {!!message && <Text style={styles.ok}>{message}</Text>}
       {!!error && <Text style={styles.warn}>{error}</Text>}
+      <Text style={styles.support}>
+        Problems with QuickBooks? Email{' '}
+        <Text style={styles.link} onPress={() => Linking.openURL(`mailto:${LEGAL.contactEmail}?subject=LED%20Pro%20QuickBooks`)}>
+          {LEGAL.contactEmail}
+        </Text>
+      </Text>
     </View>
   );
 }
@@ -78,4 +85,6 @@ const styles = StyleSheet.create({
   primaryText: { color: '#fff', fontSize: 14, fontWeight: '500' },
   linkBtn: { alignItems: 'center', paddingVertical: 6 },
   linkDanger: { fontSize: 13, color: '#A32D2D' },
+  support: { fontSize: 11, color: Colors.textTertiary },
+  link: { color: Colors.blue },
 });

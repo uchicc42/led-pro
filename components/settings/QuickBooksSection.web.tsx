@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, type CSSProperties } from 'react';
 import { Colors } from '../../constants/Colors';
+import { LEGAL } from '../legal/LegalPage';
 import { formatWhen, useQuickBooks } from './useQuickBooks';
 
 // QuickBooks section of Settings (web). Owners connect here: the browser goes to QuickBooks
@@ -93,6 +94,10 @@ export default function QuickBooksSection() {
 
         {message && <div style={s.ok}>{message}</div>}
         {error && <div style={s.warn}>{error}</div>}
+        <div style={s.support}>
+          Problems with QuickBooks? Email <a style={s.link} href={`mailto:${LEGAL.contactEmail}?subject=LED%20Pro%20QuickBooks`}>{LEGAL.contactEmail}</a>
+          {' · '}<a style={s.link} href="/privacy">Privacy</a>{' · '}<a style={s.link} href="/terms">Terms</a>
+        </div>
       </div>
     </div>
   );
@@ -112,4 +117,6 @@ const s: Record<string, CSSProperties> = {
   syncBtn: { padding: '8px 14px', background: '#2CA01C', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: '500', cursor: 'pointer' },
   connectBtn: { padding: '9px 16px', background: '#2CA01C', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: '500', cursor: 'pointer' },
   linkDanger: { background: 'none', border: 'none', color: '#A32D2D', fontSize: 13, cursor: 'pointer', padding: 0 },
+  support: { fontSize: 12, color: Colors.textTertiary },
+  link: { color: Colors.blue },
 };
