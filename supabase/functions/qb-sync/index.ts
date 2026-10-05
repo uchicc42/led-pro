@@ -1,6 +1,9 @@
 // Supabase Edge Function: sync QuickBooks non-inventory items into LED Pro's "New LED"
 // light types.
 //
+// - The light type name is the item's Sales description (e.g. "2x4"); the item Name (the
+//   product code) is kept as product_code. No description falls back to the code, and two
+//   active items with the same description get their code added so they stay distinct.
 // - New items are added; renamed items are renamed (matched by QuickBooks id).
 // - Items made inactive or deleted in QuickBooks are archived (hidden from dropdowns).
 // - An existing light type with the same name is linked rather than duplicated.
@@ -25,7 +28,7 @@ const reply = (status: number, body: Record<string, unknown>) =>
 const API = (env: string) =>
   env === 'sandbox' ? 'https://sandbox-quickbooks.api.intuit.com' : 'https://quickbooks.api.intuit.com';
 
-type QbItem = { Id: string; Name: string; Type: string; Active: boolean };
+type QbItem = { Id: string; Name: string; Description?: string; Type: string; Active: boolean };
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -90,7 +93,7 @@ Deno.serve(async (req) => {
   // Every non-inventory item, active and inactive, a page at a time.
   const items: QbItem[] = [];
   for (let start = 1; ; start += 1000) {
-    const query = `select Id, Name, Type, Active from Item where Type = 'NonInventory' and Active in (true, false) startposition ${start} maxresults 1000`;
+    const query = `select Id, Name, Description, Type, Active from Item where Type = 'NonInventory' and Active in (true, false) startposition ${start} maxresults 1000`;
     const res = await fetch(
       `${API(connection.environment)}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(query)}&minorversion=75`,
       { headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' } },
@@ -104,7 +107,20 @@ Deno.serve(async (req) => {
     if (page.length < 1000) break;
   }
 
-  const { data: types } = await admin.from('light_types').select('id, name, category, sort_order, quickbooks_item_id, archived');
+  // Display name: the sales description, made unique with the product code when two active
+  // items share one.
+  const descriptionOf = (i: QbItem) => (i.Description ?? '').trim() || i.Name.trim();
+  const activeCounts = new Map<string, number>();
+  items.filter(i => i.Active).forEach(i => {
+    const key = descriptionOf(i).toLowerCase();
+    activeCounts.set(key, (activeCounts.get(key) ?? 0) + 1);
+  });
+  const displayName = (i: QbItem) => {
+    const desc = descriptionOf(i);
+    return (activeCounts.get(desc.toLowerCase()) ?? 0) > 1 && desc !== i.Name.trim() ? `${desc} · ${i.Name.trim()}` : desc;
+  };
+
+  const { data: types } = await admin.from('light_types').select('id, name, category, sort_order, quickbooks_item_id, product_code, archived');
   const all = types ?? [];
   const byQbId = new Map(all.filter(t => t.quickbooks_item_id).map(t => [t.quickbooks_item_id as string, t]));
   const unlinkedNew = new Map(all.filter(t => !t.quickbooks_item_id && t.category === 'new').map(t => [t.name.trim().toLowerCase(), t]));
@@ -115,12 +131,14 @@ Deno.serve(async (req) => {
 
   for (const item of items) {
     seen.add(item.Id);
-    const name = item.Name.trim();
+    const name = displayName(item);
+    const productCode = item.Name.trim();
     const existing = byQbId.get(item.Id) ?? unlinkedNew.get(name.toLowerCase());
     if (existing) {
       const patch: Record<string, unknown> = {};
       if (existing.quickbooks_item_id !== item.Id) patch.quickbooks_item_id = item.Id;
       if (existing.name !== name) patch.name = name;
+      if (existing.product_code !== productCode) patch.product_code = productCode;
       if (existing.archived !== !item.Active) patch.archived = !item.Active;
       if (Object.keys(patch).length > 0) {
         await admin.from('light_types').update(patch).eq('id', existing.id);
@@ -128,7 +146,7 @@ Deno.serve(async (req) => {
       }
     } else if (item.Active) {
       await admin.from('light_types').insert({
-        name, category: 'new', sort_order: nextSort++, quickbooks_item_id: item.Id, archived: false,
+        name, product_code: productCode, category: 'new', sort_order: nextSort++, quickbooks_item_id: item.Id, archived: false,
       });
       added++;
     }

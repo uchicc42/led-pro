@@ -8,6 +8,8 @@ begin;
 -- the name because light rows store the name itself.
 alter table public.light_types add column if not exists quickbooks_item_id text unique;
 alter table public.light_types add column if not exists archived boolean not null default false;
+-- The QuickBooks item Name (the product code). The light type's name is the sales description.
+alter table public.light_types add column if not exists product_code text;
 
 -- The QuickBooks connection (one per company). Tokens are server-only: row level security
 -- is on with no policies, so only the QuickBooks functions can read it.

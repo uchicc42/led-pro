@@ -252,7 +252,10 @@ export default function SettingsScreen() {
           {editingType && (
             <View style={styles.modalSheet}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{editingType.name}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalTitle}>{editingType.name}</Text>
+                  {!!editingType.product_code && <Text style={styles.productCode}>QuickBooks product: {editingType.product_code}</Text>}
+                </View>
                 <TouchableOpacity onPress={() => setEditingTypeId(null)}>
                   <Text style={styles.modalDone}>Done</Text>
                 </TouchableOpacity>
@@ -321,6 +324,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   qbBadge: { fontSize: 9, fontWeight: '700', color: '#2CA01C', borderWidth: 0.5, borderColor: '#2CA01C', borderRadius: 4, paddingHorizontal: 3 },
+  productCode: { fontSize: 12, color: Colors.textTertiary, marginTop: 2 },
   qbNote: { fontSize: 12, color: Colors.textTertiary, textAlign: 'center', marginTop: 20 },
   tagInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tagMeta: { fontSize: 11, color: Colors.textTertiary },
