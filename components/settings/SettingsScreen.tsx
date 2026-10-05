@@ -18,14 +18,15 @@ import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import { LIGHT_TYPE_PALETTE } from '../../constants/lightTypeColors';
 import { registerForPushNotifications } from '../../constants/notifications';
 import { clearCurrentUser, getCurrentUser } from '../../constants/userStore';
+import TeamSection from './TeamSection';
 import { useSettings } from './useSettings';
 
 // Native UI. The web UI lives in SettingsScreen.web.tsx; Metro picks the right file per platform.
 
 export default function SettingsScreen() {
   const {
-    lightTypes, teamMembers, newTypeName, setNewTypeName, newTypeCategory, setNewTypeCategory,
-    loading, saving, expandLights, setExpandLights, expandTeam, setExpandTeam, currentUser,
+    lightTypes, newTypeName, setNewTypeName, newTypeCategory, setNewTypeCategory,
+    loading, saving, expandLights, setExpandLights, currentUser,
     notifyAreaComplete, setNotifyAreaComplete, notifyJobComplete, setNotifyJobComplete,
     notifyJobNotes, setNotifyJobNotes, expandNotifications, setExpandNotifications,
     updateNotificationPref, addLightType, deleteLightType, currentTypes, newTypes,
@@ -176,36 +177,7 @@ export default function SettingsScreen() {
         )}
 
         {/* TEAM MEMBERS */}
-        <TouchableOpacity
-          style={styles.sectionRow}
-          onPress={() => setExpandTeam(!expandTeam)}
-        >
-          <Text style={styles.sectionIcon}>👥</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>Team members</Text>
-            <Text style={styles.sectionSub}>{teamMembers.length} members</Text>
-          </View>
-          <Text style={styles.chevron}>{expandTeam ? '▲' : '▼'}</Text>
-        </TouchableOpacity>
-
-        {expandTeam && (
-          <View style={styles.expandPanel}>
-            {teamMembers.map(m => (
-              <View key={m.id} style={styles.memberRow}>
-                <View style={[styles.avatar, { backgroundColor: m.color + '22' }]}>
-                  <Text style={[styles.avatarText, { color: m.color }]}>{m.initials}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.memberName}>{m.name}</Text>
-                  <Text style={styles.memberRole}>{m.role} · PIN set</Text>
-                </View>
-              </View>
-            ))}
-            <Text style={styles.comingSoonNote}>
-              ℹ️ Adding team members coming in next update
-            </Text>
-          </View>
-        )}
+        <TeamSection />
 
         {/* NOTIFICATIONS */}
         <TouchableOpacity

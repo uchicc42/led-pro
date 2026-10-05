@@ -4,14 +4,15 @@ import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { LIGHT_TYPE_PALETTE } from '../../constants/lightTypeColors';
 import { clearCurrentUser } from '../../constants/userStore';
+import TeamSection from './TeamSection';
 import { useSettings } from './useSettings';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses SettingsScreen.tsx.
 
 export default function SettingsScreen() {
   const {
-    lightTypes, teamMembers, newTypeName, setNewTypeName, newTypeCategory, setNewTypeCategory,
-    loading, saving, expandLights, setExpandLights, expandTeam, setExpandTeam, currentUser,
+    lightTypes, newTypeName, setNewTypeName, newTypeCategory, setNewTypeCategory,
+    loading, saving, expandLights, setExpandLights, currentUser,
     notifyAreaComplete, setNotifyAreaComplete, notifyJobComplete, setNotifyJobComplete,
     notifyJobNotes, setNotifyJobNotes, expandNotifications, setExpandNotifications,
     updateNotificationPref, addLightType, deleteLightType, currentTypes, newTypes,
@@ -188,51 +189,7 @@ export default function SettingsScreen() {
         </div>
 
         {/* TEAM MEMBERS */}
-        <div style={webStyles.section}>
-          <div
-            style={webStyles.sectionHeader}
-            onClick={() => setExpandTeam(!expandTeam)}
-          >
-            <div style={webStyles.sectionHeaderLeft}>
-              <div style={webStyles.sectionIcon}>👥</div>
-              <div>
-                <div style={webStyles.sectionTitle}>Team members</div>
-                <div style={webStyles.sectionSub}>Manage who can log in</div>
-              </div>
-            </div>
-            <div style={webStyles.sectionCount}>{teamMembers.length} members</div>
-            <div style={webStyles.chevron}>{expandTeam ? '▲' : '▼'}</div>
-          </div>
-
-          {expandTeam && (
-            <div style={webStyles.expandPanel}>
-              {teamMembers.map(m => (
-                <div key={m.id} style={webStyles.memberRow}>
-                  <div style={{
-                    ...webStyles.avatar,
-                    background: m.color + '22',
-                    color: m.color,
-                  }}>
-                    {m.initials}
-                  </div>
-                  <div style={webStyles.memberInfo}>
-                    <div style={webStyles.memberName}>
-                      {m.name}
-                      {m.role === 'owner' && (
-                        <span style={webStyles.ownerBadge}>Owner</span>
-                      )}
-                    </div>
-                    <div style={webStyles.memberRole}>{m.role} · PIN set</div>
-                  </div>
-                  <div style={webStyles.memberRole}>{m.role}</div>
-                </div>
-              ))}
-              <div style={webStyles.comingSoonNote}>
-                ℹ️ Adding and editing team members coming in next update
-              </div>
-            </div>
-          )}
-        </div>
+        <TeamSection />
 
         {/* NOTIFICATIONS */}
         <div style={webStyles.section}>
