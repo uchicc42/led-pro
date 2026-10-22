@@ -54,7 +54,7 @@ function ControlStatusLine({ control, status, onStatus }: { control: any; status
 
 export default function ElectricianScreen() {
   const {
-    areaId, jobId, area, job, lightRows, notes, setNotes, needsFollowUp, setNeedsFollowUp,
+    areaId, jobId, area, job, lightRows, codes, notes, setNotes, needsFollowUp, setNeedsFollowUp,
     loading, notOnDevice, saving, savedFlash, isOnlineStatus, getInstallRow, updateInstallRow, save,
     getRowControls, areaLevelControls, getControlStatus, updateControlStatus,
   } = useElectrician();
@@ -94,7 +94,7 @@ export default function ElectricianScreen() {
           <Text style={styles.refVal}>
             {lightRows
               .filter(r => !r.removed_only)
-              .map(r => `${r.new_quantity} × ${withMount(r.new_light_type, r.new_mount)}`)
+              .map(r => `${r.new_quantity} × ${withMount(r.new_light_type, r.new_mount, codes)}`)
               .join('\n') || 'No lights entered yet'}
           </Text>
         </View>
@@ -114,10 +114,10 @@ export default function ElectricianScreen() {
               <View key={row.id} style={styles.installBlock}>
                 <Text style={styles.installType}>
                   {row.new_addition
-                    ? `➕ ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
+                    ? `➕ ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount, codes)}`
                     : row.removed_only
-                    ? `🗑 Remove: ${row.quantity} × ${withMount(row.light_type_id, row.old_mount)}`
-                    : `${row.quantity} × ${withMount(row.light_type_id, row.old_mount)} → ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
+                    ? `🗑 Remove: ${row.quantity} × ${withMount(row.light_type_id, row.old_mount, codes)}`
+                    : `${row.quantity} × ${withMount(row.light_type_id, row.old_mount, codes)} → ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount, codes)}`
                   }
                 </Text>
                 <Text style={styles.installQty}>

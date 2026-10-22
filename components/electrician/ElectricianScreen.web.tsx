@@ -49,7 +49,7 @@ function ControlStatusLine({ control, status, onStatus }: { control: any; status
 
 export default function ElectricianScreen() {
   const {
-    areaId, jobId, area, job, lightRows, notes, setNotes, needsFollowUp, setNeedsFollowUp,
+    areaId, jobId, area, job, lightRows, codes, notes, setNotes, needsFollowUp, setNeedsFollowUp,
     loading, notOnDevice, saving, savedFlash, isOnlineStatus, getInstallRow, updateInstallRow, save,
     getRowControls, areaLevelControls, getControlStatus, updateControlStatus,
   } = useElectrician();
@@ -95,14 +95,14 @@ export default function ElectricianScreen() {
               lightRows.map((row, i) => (
                 <div key={i} style={webStyles.refRow}>
                   <span style={webStyles.refKey}>
-                    {row.removed_only ? '🗑 Remove:' : row.new_addition ? '➕ Add:' : `${row.quantity} × ${withMount(row.light_type_id, row.old_mount)} →`}
+                    {row.removed_only ? '🗑 Remove:' : row.new_addition ? '➕ Add:' : `${row.quantity} × ${withMount(row.light_type_id, row.old_mount, codes)} →`}
                   </span>
                   <span style={webStyles.refVal}>
                     {row.removed_only
-                      ? `${row.quantity} × ${withMount(row.light_type_id, row.old_mount)} (no replacement)`
+                      ? `${row.quantity} × ${withMount(row.light_type_id, row.old_mount, codes)} (no replacement)`
                       : row.new_addition
-                      ? `${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
-                      : `${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
+                      ? `${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount, codes)}`
+                      : `${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount, codes)}`
                     }
                   </span>
                 </div>
@@ -130,10 +130,10 @@ export default function ElectricianScreen() {
                     <div>
                       <div style={webStyles.installType}>
                         {row.new_addition
-                          ? `➕ New: ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
+                          ? `➕ New: ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount, codes)}`
                           : row.removed_only
-                          ? `🗑 Remove: ${row.quantity} × ${withMount(row.light_type_id, row.old_mount)}`
-                          : `${row.quantity} × ${withMount(row.light_type_id, row.old_mount)} → ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
+                          ? `🗑 Remove: ${row.quantity} × ${withMount(row.light_type_id, row.old_mount, codes)}`
+                          : `${row.quantity} × ${withMount(row.light_type_id, row.old_mount, codes)} → ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount, codes)}`
                         }
                       </div>
                       <div style={webStyles.installQty}>

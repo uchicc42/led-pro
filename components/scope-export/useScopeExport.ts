@@ -1,6 +1,7 @@
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { NO_TYPE_COLOR, colorMap, ensureLightTypeColors, tintOf } from '../../constants/lightTypeColors';
+import { productCodes } from '../../lib/productCodes';
 import { supabase } from '../../supabase';
 import { CONTROL_LABEL, ControlKind } from '../area-entry/useAreaEntry';
 
@@ -10,6 +11,7 @@ export function useScopeExport() {
   const [areas, setAreas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeColors, setTypeColors] = useState<Map<string, string>>(new Map());
+  const [codes, setCodes] = useState<Map<string, string>>(new Map());
 
   // Read-only screen: reload everything each time it's shown.
   useFocusEffect(
@@ -33,8 +35,11 @@ export function useScopeExport() {
       .order('created_at');
     if (areaData) setAreas(areaData);
 
-    const { data: types } = await supabase.from('light_types').select('id, name, category, color');
-    if (types) setTypeColors(colorMap(await ensureLightTypeColors(types as any[])));
+    const { data: types } = await supabase.from('light_types').select('id, name, category, color, product_code');
+    if (types) {
+      setTypeColors(colorMap(await ensureLightTypeColors(types as any[])));
+      setCodes(productCodes(types));
+    }
     setLoading(false);
   }
 
@@ -43,7 +48,7 @@ export function useScopeExport() {
 
   const legend = legendFor(areas, typeColors);
 
-  return { jobId, job, areas, loading, kinds, typeColors, legend, ...totals };
+  return { jobId, job, areas, loading, kinds, typeColors, codes, legend, ...totals };
 }
 
 // Row colour follows the new light type; rows with no new light (removed only) are grey.
@@ -53,11 +58,13 @@ export function rowColor(row: any, typeColors: Map<string, string>) {
 }
 export { tintOf };
 
-// Light type name plus its mount, e.g. "2×4 LED panel (Recessed)".
-export function withMount(type: string | null, mount: string | null) {
+// Light type name plus its mount and QuickBooks product code, e.g. "2×4 LED panel (Recessed) · LP-2440".
+export function withMount(type: string | null, mount: string | null, codes?: Map<string, string>) {
   if (!type) return '—';
-  return mount ? `${type} (${mount})` : type;
+  const code = codes?.get(type);
+  return `${type}${mount ? ` (${mount})` : ''}${code ? ` · ${code}` : ''}`;
 }
+
 
 // Colour key: each new light type used on this job, in order of first appearance.
 export function legendFor(areas: any[], typeColors: Map<string, string>) {
@@ -122,7 +129,7 @@ export function getTotals(areas: any[], kinds: ControlKind[] = []) {
 }
 
 // Printable scope-of-work document, shared by the web print flow and native expo-print.
-export function generateHTML(job: any, areas: any[], typeColors: Map<string, string> = new Map()) {
+export function generateHTML(job: any, areas: any[], typeColors: Map<string, string> = new Map(), codes: Map<string, string> = new Map()) {
   const legend = legendFor(areas, typeColors);
   const kinds = enabledControlKinds(job);
   const { totalOld, totalNew, totalSensors, totalPhotocells } = getTotals(areas, kinds);
@@ -144,9 +151,9 @@ export function generateHTML(job: any, areas: any[], typeColors: Map<string, str
       <tr style="background: ${tintOf(rowColor(row, typeColors))}">
         ${i === 0 ? areaCell : ''}
         <td class="qty">${row.new_addition ? '—' : row.quantity || 0}</td>
-        <td>${row.new_addition ? '(new addition)' : withMount(row.light_type_id, row.old_mount)}</td>
+        <td>${row.new_addition ? '(new addition)' : withMount(row.light_type_id, row.old_mount, codes)}</td>
         <td class="qty">${row.removed_only ? '—' : row.new_quantity || 0}</td>
-        <td class="type-cell" style="border-left: 4px solid ${rowColor(row, typeColors)}">${row.removed_only ? '(removed only)' : withMount(row.new_light_type, row.new_mount)}</td>
+        <td class="type-cell" style="border-left: 4px solid ${rowColor(row, typeColors)}">${row.removed_only ? '(removed only)' : withMount(row.new_light_type, row.new_mount, codes)}</td>
         <td class="center">${row.lumen_setting || '—'}</td>
         <td class="center">${row.hours_flagged ? `${row.hours_start || ''} – ${row.hours_end || ''}` : '—'}</td>
         ${showControls ? `<td>${rowControlsText(area, row.id, kinds) || '—'}</td>` : ''}

@@ -10,13 +10,13 @@ import { areaControlsText, generateHTML, rowColor, rowControlsText, sortedRows, 
 // Native UI. The web UI lives in ScopeExportScreen.web.tsx; Metro picks the right file per platform.
 
 export default function ScopeExportScreen() {
-  const { jobId, job, areas, loading, kinds, typeColors, legend, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
+  const { jobId, job, areas, loading, kinds, typeColors, codes, legend, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
   const [generating, setGenerating] = useState(false);
 
   async function exportPDF() {
     setGenerating(true);
     try {
-      const { uri } = await Print.printToFileAsync({ html: generateHTML(job, areas, typeColors) });
+      const { uri } = await Print.printToFileAsync({ html: generateHTML(job, areas, typeColors, codes) });
       if (!(await Sharing.isAvailableAsync())) {
         Alert.alert('Sharing unavailable', 'The PDF was created, but this device can\'t open the share menu.');
       } else {
@@ -105,10 +105,10 @@ export default function ScopeExportScreen() {
                 <View key={i} style={[styles.lightRow, { borderLeftColor: rowColor(row, typeColors), backgroundColor: tintOf(rowColor(row, typeColors), 0.9) }]}>
                   <Text style={styles.lightRowText}>
                     {row.new_addition
-                      ? `➕ Add: ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
+                      ? `➕ Add: ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount, codes)}`
                       : row.removed_only
-                      ? `🗑 Remove: ${row.quantity} × ${withMount(row.light_type_id, row.old_mount)}`
-                      : `${row.quantity} × ${withMount(row.light_type_id, row.old_mount)} → ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount)}`
+                      ? `🗑 Remove: ${row.quantity} × ${withMount(row.light_type_id, row.old_mount, codes)}`
+                      : `${row.quantity} × ${withMount(row.light_type_id, row.old_mount, codes)} → ${row.new_quantity} × ${withMount(row.new_light_type, row.new_mount, codes)}`
                     }
                   </Text>
                   {!!row.lumen_setting && <Text style={styles.lightRowMeta}>Lumen: {row.lumen_setting}</Text>}

@@ -26,13 +26,17 @@ type TypePickerModalProps = {
   visible: boolean;
   title: string;
   options: string[];
+  // Optional second line per option (the QuickBooks product code); search matches it too.
+  detailFor?: (item: string) => string | null;
   onSelect: (item: string) => void;
   onClose: () => void;
 };
 
-function TypePickerModal({ visible, title, options, onSelect, onClose }: TypePickerModalProps) {
+function TypePickerModal({ visible, title, options, detailFor, onSelect, onClose }: TypePickerModalProps) {
   const [search, setSearch] = useState('');
-  const filtered = options.filter(t => t.toLowerCase().includes(search.toLowerCase()));
+  const query = search.toLowerCase();
+  const filtered = options.filter(t =>
+    t.toLowerCase().includes(query) || !!detailFor?.(t)?.toLowerCase().includes(query));
 
   function close() {
     setSearch('');
@@ -74,6 +78,7 @@ function TypePickerModal({ visible, title, options, onSelect, onClose }: TypePic
                   onPress={() => { onSelect(item); close(); }}
                 >
                   <Text style={styles.modalItemText}>{item}</Text>
+                  {!!detailFor?.(item) && <Text style={styles.codeText}>{detailFor(item)}</Text>}
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
@@ -128,7 +133,7 @@ export default function AreaEntryScreen() {
     areaId, jobId, area, job, rows, notes, setNotes, isComplete, saving, saveError, loading, notOnDevice,
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
-    describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor,
+    describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor, codeFor,
   } = useAreaEntry();
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const picker = pickerTarget ? describePicker(pickerTarget) : null;
@@ -147,6 +152,7 @@ export default function AreaEntryScreen() {
         visible={!!picker}
         title={picker?.title ?? ''}
         options={picker?.options ?? []}
+        detailFor={picker && 'detailFor' in picker ? picker.detailFor : undefined}
         onSelect={item => picker?.select(item)}
         onClose={() => setPickerTarget(null)}
       />
@@ -186,6 +192,7 @@ export default function AreaEntryScreen() {
                     <Text style={[styles.typeText, !!row.oldType && { color: Colors.textPrimary }]} numberOfLines={1}>
                       {row.oldType || 'Select type...'}
                     </Text>
+                    {!!codeFor(row.oldType) && <Text style={styles.codeText}>{codeFor(row.oldType)}</Text>}
                   </TouchableOpacity>
                 </View>
                 {mountOptionsFor(row.oldType).length > 0 && (
@@ -236,6 +243,7 @@ export default function AreaEntryScreen() {
                         {row.newType || 'Select type...'}
                       </Text>
                     </View>
+                    {!!codeFor(row.newType) && <Text style={styles.codeText}>{codeFor(row.newType)}</Text>}
                   </TouchableOpacity>
                 </View>
                 {mountOptionsFor(row.newType).length > 0 && (
@@ -449,6 +457,7 @@ const styles = StyleSheet.create({
   modalSearchInput: { flex: 1, fontSize: 14, color: Colors.textPrimary, padding: 0 },
   modalItem: { padding: 16, borderBottomWidth: 0.5, borderBottomColor: Colors.borderLight },
   modalItemText: { fontSize: 14, color: Colors.textPrimary },
+  codeText: { fontSize: 11, color: Colors.textTertiary, marginTop: 2 },
   modalEmpty: { padding: 32, alignItems: 'center' },
   modalEmptyText: { fontSize: 14, color: Colors.textTertiary },
 });

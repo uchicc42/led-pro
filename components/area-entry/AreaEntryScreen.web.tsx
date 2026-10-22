@@ -12,13 +12,17 @@ import { CONTROL_LABEL, ControlKind, LUMEN_OPTIONS, PickerTarget, useAreaEntry }
 type WebTypePickerModalProps = {
   title: string;
   options: string[];
+  // Optional second line per option (the QuickBooks product code); search matches it too.
+  detailFor?: (item: string) => string | null;
   onSelect: (item: string) => void;
   onClose: () => void;
 };
 
-function WebTypePickerModal({ title, options, onSelect, onClose }: WebTypePickerModalProps) {
+function WebTypePickerModal({ title, options, detailFor, onSelect, onClose }: WebTypePickerModalProps) {
   const [search, setSearch] = useState('');
-  const filtered = options.filter(t => t.toLowerCase().includes(search.toLowerCase()));
+  const query = search.toLowerCase();
+  const filtered = options.filter(t =>
+    t.toLowerCase().includes(query) || !!detailFor?.(t)?.toLowerCase().includes(query));
 
   function pick(item: string) {
     onSelect(item);
@@ -58,6 +62,7 @@ function WebTypePickerModal({ title, options, onSelect, onClose }: WebTypePicker
               onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
             >
               {item}
+              {!!detailFor?.(item) && <div style={webStyles.codeText}>{detailFor(item)}</div>}
             </div>
           ))}
         </div>
@@ -101,7 +106,7 @@ export default function AreaEntryScreen() {
     areaId, jobId, area, job, rows, notes, setNotes, isComplete, saving, saveError, loading, notOnDevice,
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
-    describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor,
+    describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor, codeFor,
   } = useAreaEntry();
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const picker = pickerTarget ? describePicker(pickerTarget) : null;
@@ -120,6 +125,7 @@ export default function AreaEntryScreen() {
         <WebTypePickerModal
           title={picker.title}
           options={picker.options}
+          detailFor={'detailFor' in picker ? picker.detailFor : undefined}
           onSelect={picker.select}
           onClose={() => setPickerTarget(null)}
         />
@@ -178,6 +184,7 @@ export default function AreaEntryScreen() {
                   }}
                 >
                   {row.oldType || 'Select...'}
+                  {!!codeFor(row.oldType) && <div style={webStyles.codeText}>{codeFor(row.oldType)}</div>}
                 </div>
 
                 {mountOptionsFor(row.oldType).length > 0 && (
@@ -218,6 +225,7 @@ export default function AreaEntryScreen() {
                 >
                   {!!colorFor(row.newType) && <span style={{ ...webStyles.colorDot, background: colorFor(row.newType)! }} />}
                   {row.newType || 'Select...'}
+                  {!!codeFor(row.newType) && <div style={webStyles.codeText}>{codeFor(row.newType)}</div>}
                 </div>
 
                 {mountOptionsFor(row.newType).length > 0 && (
@@ -408,6 +416,7 @@ const webStyles: Record<string, CSSProperties> = {
   mountBtn: { padding: '8px 8px', fontSize: 12, borderWidth: 0.5, borderStyle: 'solid', borderColor: '#e0e7ef', borderRadius: 8, cursor: 'pointer', background: '#fff', whiteSpace: 'nowrap', flexShrink: 0, maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis' },
   mountBtnMissing: { borderColor: '#EF9F27', background: '#FAEEDA', color: '#854F0B' },
   colorDot: { display: 'inline-block', width: 9, height: 9, borderRadius: 5, marginRight: 6, verticalAlign: 'middle' },
+  codeText: { fontSize: 11, color: Colors.textTertiary, marginTop: 2 },
   saveError: { color: '#A32D2D', fontSize: 13, marginTop: 16 },
   actionRow: { display: 'flex', gap: 10, marginTop: 20 },
   saveBtn: { flex: 1, padding: '13px', background: Colors.blue, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: '500', cursor: 'pointer' },

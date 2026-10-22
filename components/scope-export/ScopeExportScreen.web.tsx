@@ -7,7 +7,7 @@ import { areaControlsText, generateHTML, rowColor, rowControlsText, sortedRows, 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses ScopeExportScreen.tsx.
 
 export default function ScopeExportScreen() {
-  const { jobId, job, areas, loading, kinds, typeColors, legend, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
+  const { jobId, job, areas, loading, kinds, typeColors, codes, legend, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
   const [generating, setGenerating] = useState(false);
 
   function exportPDF() {
@@ -15,7 +15,7 @@ export default function ScopeExportScreen() {
     // Open in a new tab and trigger the browser's print dialog
     const win = window.open('', '_blank');
     if (win) {
-      win.document.write(generateHTML(job, areas, typeColors));
+      win.document.write(generateHTML(job, areas, typeColors, codes));
       win.document.close();
       win.focus();
       setTimeout(() => { win.print(); }, 500);
@@ -104,9 +104,9 @@ export default function ScopeExportScreen() {
                   <tr key={`${area.id}-${i}`} style={{ background: tintOf(rowColor(row, typeColors)) }}>
                     {i === 0 && areaCell}
                     <td style={webStyles.tdQty}>{row.new_addition ? '—' : row.quantity || 0}</td>
-                    <td style={webStyles.td}>{row.new_addition ? '(new addition)' : withMount(row.light_type_id, row.old_mount)}</td>
+                    <td style={webStyles.td}>{row.new_addition ? '(new addition)' : withMount(row.light_type_id, row.old_mount, codes)}</td>
                     <td style={webStyles.tdQty}>{row.removed_only ? '—' : row.new_quantity || 0}</td>
-                    <td style={{ ...webStyles.td, borderLeft: `4px solid ${rowColor(row, typeColors)}` }}>{row.removed_only ? '(removed only)' : withMount(row.new_light_type, row.new_mount)}</td>
+                    <td style={{ ...webStyles.td, borderLeft: `4px solid ${rowColor(row, typeColors)}` }}>{row.removed_only ? '(removed only)' : withMount(row.new_light_type, row.new_mount, codes)}</td>
                     <td style={webStyles.tdCenter}>{row.lumen_setting || '—'}</td>
                     <td style={webStyles.tdCenter}>{row.hours_flagged ? `${row.hours_start || ''} – ${row.hours_end || ''}` : '—'}</td>
                     {kinds.length > 0 && <td style={{ ...webStyles.td, fontSize: 12 }}>{rowControlsText(area, row.id, kinds) || '—'}</td>}

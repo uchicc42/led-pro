@@ -4,6 +4,7 @@ import { useOnline } from '../../lib/offline/connectivity';
 import { newId, patchRow, saveRow } from '../../lib/offline/data';
 import { useStore } from '../../lib/offline/store';
 import { trackJob } from '../../lib/offline/sync';
+import { productCodes } from '../../lib/productCodes';
 
 type InstallEdit = { status?: string; removed?: boolean; removal_note?: string };
 
@@ -26,6 +27,7 @@ export function useElectrician() {
   const job = store.get('jobs', jobId) ?? null;
   const lightRows = store.where('light_rows', r => r.area_id === areaId)
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const codes = productCodes(store.all('light_types'));
   const controls = store.where('area_controls', c => c.area_id === areaId)
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
@@ -127,7 +129,7 @@ export function useElectrician() {
   const notOnDevice = store.loaded && !area && !isOnlineStatus;
 
   return {
-    areaId, jobId, area, job, lightRows, notes, setNotes, needsFollowUp, setNeedsFollowUp,
+    areaId, jobId, area, job, lightRows, codes, notes, setNotes, needsFollowUp, setNeedsFollowUp,
     loading, notOnDevice, saving, savedFlash, isOnlineStatus, getInstallRow, updateInstallRow, save,
     getRowControls, areaLevelControls, getControlStatus, updateControlStatus,
   };

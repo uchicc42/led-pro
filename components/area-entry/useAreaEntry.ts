@@ -6,6 +6,7 @@ import { deleteLightRowCascade } from '../../lib/offline/cascade';
 import { deleteRow, newId, patchRow, queueCall, saveRow } from '../../lib/offline/data';
 import { Row, StoreSnapshot, getSnapshot, useStore } from '../../lib/offline/store';
 import { trackJob } from '../../lib/offline/sync';
+import { productCodes } from '../../lib/productCodes';
 
 export const LUMEN_OPTIONS = ['L', 'M', 'H', '3500K', '4000K', '5000K'];
 
@@ -154,8 +155,11 @@ export function useAreaEntry() {
   // Switching a kind off hides it without deleting anything already entered.
   const enabledKinds = CONTROL_KINDS.filter(k => (k === 'occupancy' ? job?.col_sensor : job?.col_photocell));
 
+  const codes = productCodes(lightTypeRows);
+
   const mountOptionsFor = (typeName: string) => typeInfo[typeName]?.mounts ?? [];
   const colorFor = (typeName: string) => typeInfo[typeName]?.color ?? null;
+  const codeFor = (typeName: string) => codes.get(typeName) ?? null;
 
   // A mount is required when the side is in use and its light type has mount options.
   function missingMount(r: LightRow): string | null {
@@ -313,6 +317,7 @@ export function useAreaEntry() {
       return {
         title: target.field === 'oldType' ? 'Current light type' : 'New light type',
         options: target.field === 'oldType' ? lightTypes.current : lightTypes.new,
+        detailFor: codeFor,
         select: (item: string) => updateRow(target.rowIndex, target.field, item),
       };
     }
@@ -352,7 +357,7 @@ export function useAreaEntry() {
     areaId, jobId, area, job, rows, notes, setNotes, isComplete, lightTypes, saving, saveError, loading, notOnDevice,
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
-    describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor,
+    describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor, codeFor,
   };
 }
 
