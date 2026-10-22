@@ -3,7 +3,7 @@
     "name": "LED Pro",
     "slug": "led-pro",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "ledpro",
     "userInterfaceStyle": "automatic",
@@ -46,6 +46,12 @@
       "expo-image",
       "expo-sharing",
       "expo-status-bar",
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "DEFAULT"
+        }
+      ],
       "expo-web-browser",
       [
         "expo-image-picker",
