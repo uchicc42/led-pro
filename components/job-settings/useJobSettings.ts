@@ -25,6 +25,8 @@ export function useJobSettings() {
   const online = useOnline();
   const job = store.get('jobs', jobId) ?? null;
   const [name, setName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [installerNotes, setInstallerNotes] = useState('');
   const [location, setLocation] = useState('');
   const [date, setDate] = useState('');
   const [saving, setSaving] = useState(false);
@@ -41,7 +43,10 @@ export function useJobSettings() {
     col_layout: !!job?.col_layout,
     col_hours: !!job?.col_hours,
   };
-  const savedDetails = { name: job?.name || '', location: job?.location || '', date: job?.date || '' };
+  const savedDetails = {
+    name: job?.name || '', companyName: job?.company_name || '', location: job?.location || '',
+    date: job?.date || '', installerNotes: job?.installer_notes || '',
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -55,6 +60,8 @@ export function useJobSettings() {
   useEffect(() => {
     if (!job || detailsFor === job.id) return;
     setName(job.name || '');
+    setCompanyName(job.company_name || '');
+    setInstallerNotes(job.installer_notes || '');
     setLocation(job.location || '');
     setDate(job.date || '');
     setDetailsFor(job.id);
@@ -98,16 +105,21 @@ export function useJobSettings() {
   const isReady = !!(name.trim() && location.trim() && date);
   const detailsDirty =
     name.trim() !== savedDetails.name ||
+    companyName.trim() !== savedDetails.companyName ||
+    installerNotes.trim() !== savedDetails.installerNotes ||
     location.trim() !== savedDetails.location ||
     date !== savedDetails.date;
   const backHref = `/area-list?jobId=${jobId}`;
 
-  // Saves name/location/date. Returns true on success.
+  // Saves the job details (name, company, location, date, installer notes). Returns true on success.
   async function saveDetails() {
     if (!isReady) return false;
     setSaving(true);
     setError('');
-    patchRow('jobs', jobId, { name: name.trim(), location: location.trim(), date });
+    patchRow('jobs', jobId, {
+      name: name.trim(), company_name: companyName.trim() || null, location: location.trim(), date,
+      installer_notes: installerNotes.trim() || null,
+    });
     setSaving(false);
     log(`Job details updated for ${name.trim()}`);
     return true;
@@ -137,7 +149,8 @@ export function useJobSettings() {
   }));
 
   return {
-    loading, notOnDevice, name, setName, location, setLocation, date, setDate, mode, setMode,
+    loading, notOnDevice, name, setName, companyName, setCompanyName, location, setLocation, date, setDate,
+    installerNotes, setInstallerNotes, mode, setMode,
     columns, saving, error, isReady, detailsDirty, savedFlash,
     saveDetails, saveAndGoBack, goBack,
   };

@@ -86,6 +86,14 @@ export default function ElectricianScreen() {
 
         <div style={webStyles.modeBadge}>Electrician mode</div>
 
+        {/* Installer notes from the counter (Job settings) */}
+        {!!job?.installer_notes?.trim() && (
+          <div style={{ ...webStyles.refPanel, background: '#FAEEDA', border: '0.5px solid #EF9F27' }}>
+            <div style={webStyles.refLabel}>Installer notes</div>
+            <div style={{ ...webStyles.refVal, whiteSpace: 'pre-wrap' }}>{job.installer_notes.trim()}</div>
+          </div>
+        )}
+
         {/* Reference panel */}
         <div style={webStyles.refPanel}>
             <div style={webStyles.refLabel}>Reference — from counting</div>

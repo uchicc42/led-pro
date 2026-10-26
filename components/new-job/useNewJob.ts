@@ -6,6 +6,7 @@ import { newId, saveRow } from '../../lib/offline/data';
 
 export function useNewJob() {
   const [name, setName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [location, setLocation] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [mode, setMode] = useState<'counting' | 'electrician'>('counting');
@@ -28,6 +29,7 @@ export function useNewJob() {
     saveRow('jobs', {
       id: newId(),
       name: name.trim(),
+      company_name: companyName.trim() || null,
       location: location.trim(),
       date,
       mode,
@@ -42,6 +44,7 @@ export function useNewJob() {
 
     // The screen stays mounted between visits, so start fresh for the next job.
     setName('');
+    setCompanyName('');
     setLocation('');
     setDate(new Date().toISOString().split('T')[0]);
     setMode('counting');
@@ -62,7 +65,7 @@ export function useNewJob() {
   ];
 
   return {
-    name, setName, location, setLocation, date, setDate, mode, setMode,
+    name, setName, companyName, setCompanyName, location, setLocation, date, setDate, mode, setMode,
     columns, saving, error, isReady, createJob,
   };
 }

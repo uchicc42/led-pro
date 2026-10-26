@@ -17,7 +17,7 @@ import { useNewJob } from './useNewJob';
 
 export default function NewJobScreen() {
   const {
-    name, setName, location, setLocation, date, setDate, mode, setMode,
+    name, setName, companyName, setCompanyName, location, setLocation, date, setDate, mode, setMode,
     columns, saving, error, isReady, createJob,
   } = useNewJob();
 
@@ -42,6 +42,16 @@ export default function NewJobScreen() {
           placeholderTextColor={Colors.textTertiary}
           value={name}
           onChangeText={setName}
+        />
+
+        {/* Customer company */}
+        <Text style={styles.fieldLabel}>Company / customer</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. Fort Cherry School District"
+          placeholderTextColor={Colors.textTertiary}
+          value={companyName}
+          onChangeText={setCompanyName}
         />
 
         {/* Location */}

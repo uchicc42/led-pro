@@ -5,18 +5,19 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import SummaryCard from '../job-summary/SummaryCard';
 import { areaControlsText, generateHTML, rowColor, rowControlsText, sortedRows, tintOf, useScopeExport, withMount } from './useScopeExport';
 
 // Native UI. The web UI lives in ScopeExportScreen.web.tsx; Metro picks the right file per platform.
 
 export default function ScopeExportScreen() {
-  const { jobId, job, areas, loading, kinds, typeColors, codes, legend, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
+  const { jobId, job, areas, loading, kinds, typeColors, codes, legend, fixtures, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
   const [generating, setGenerating] = useState(false);
 
   async function exportPDF() {
     setGenerating(true);
     try {
-      const { uri } = await Print.printToFileAsync({ html: generateHTML(job, areas, typeColors, codes) });
+      const { uri } = await Print.printToFileAsync({ html: generateHTML(job, areas, typeColors, codes, fixtures) });
       if (!(await Sharing.isAvailableAsync())) {
         Alert.alert('Sharing unavailable', 'The PDF was created, but this device can\'t open the share menu.');
       } else {
@@ -45,6 +46,8 @@ export default function ScopeExportScreen() {
           <Text style={styles.headerTitle}>Scope of Work</Text>
           <View style={{ width: 50 }} />
         </View>
+
+        <SummaryCard job={job} totals={fixtures} />
 
         <View style={styles.statRow}>
           <View style={styles.statCard}>
@@ -88,11 +91,6 @@ export default function ScopeExportScreen() {
             ))}
           </View>
         )}
-
-        <View style={styles.jobCard}>
-          <Text style={styles.jobTitle}>{job?.name}</Text>
-          <Text style={styles.jobMeta}>{job?.location}</Text>
-        </View>
 
         {areas.map(area => {
           const rows = sortedRows(area);
@@ -149,9 +147,6 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 0.5, borderColor: Colors.borderLight, alignItems: 'center' },
   statVal: { fontSize: 24, fontWeight: '600', color: Colors.blue },
   statLabel: { fontSize: 11, color: Colors.textTertiary, marginTop: 2 },
-  jobCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, borderWidth: 0.5, borderColor: Colors.borderLight, marginBottom: 16 },
-  jobTitle: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
-  jobMeta: { fontSize: 13, color: Colors.textTertiary, marginTop: 2 },
   areaBlock: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 0.5, borderColor: Colors.borderLight, marginBottom: 10 },
   areaName: { fontSize: 14, fontWeight: '600', color: Colors.blue, marginBottom: 8 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },

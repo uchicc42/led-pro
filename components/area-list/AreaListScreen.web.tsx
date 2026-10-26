@@ -227,6 +227,12 @@ export default function AreaListScreen() {
             📄 Export scope of work
           </button>
           <button
+            style={{ ...webStyles.addBtn, background: '#fff', color: Colors.blue, border: `0.5px solid ${Colors.blue}`, marginBottom: 10 }}
+            onClick={() => router.push(`/job-summary?jobId=${jobId}` as any)}
+          >
+            📋 Job summary
+          </button>
+          <button
             style={{ ...webStyles.addBtn, background: '#fff', color: Colors.textSecondary, border: '0.5px solid #e0e7ef', marginBottom: 10 }}
             onClick={() => router.push(`/change-log?jobId=${jobId}`)}
           >

@@ -2,12 +2,13 @@ import { router } from 'expo-router';
 import { useState, type CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import SummaryCard from '../job-summary/SummaryCard';
 import { areaControlsText, generateHTML, rowColor, rowControlsText, sortedRows, tintOf, useScopeExport, withMount } from './useScopeExport';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses ScopeExportScreen.tsx.
 
 export default function ScopeExportScreen() {
-  const { jobId, job, areas, loading, kinds, typeColors, codes, legend, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
+  const { jobId, job, areas, loading, kinds, typeColors, codes, legend, fixtures, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
   const [generating, setGenerating] = useState(false);
 
   function exportPDF() {
@@ -15,7 +16,7 @@ export default function ScopeExportScreen() {
     // Open in a new tab and trigger the browser's print dialog
     const win = window.open('', '_blank');
     if (win) {
-      win.document.write(generateHTML(job, areas, typeColors, codes));
+      win.document.write(generateHTML(job, areas, typeColors, codes, fixtures));
       win.document.close();
       win.focus();
       setTimeout(() => { win.print(); }, 500);
@@ -38,6 +39,8 @@ export default function ScopeExportScreen() {
           </button>
           <div style={webStyles.headerTitle}>Scope of Work Preview</div>
         </div>
+
+        <SummaryCard job={job} totals={fixtures} />
 
         {/* Summary cards */}
         <div style={webStyles.statRow}>

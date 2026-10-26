@@ -88,6 +88,14 @@ export default function ElectricianScreen() {
           <Text style={styles.modeBadgeText}>Electrician mode</Text>
         </View>
 
+        {/* Installer notes from the counter (Job settings) */}
+        {!!job?.installer_notes?.trim() && (
+          <View style={[styles.refPanel, styles.installerNotes]}>
+            <Text style={styles.refLabel}>Installer notes</Text>
+            <Text style={styles.refVal}>{job.installer_notes.trim()}</Text>
+          </View>
+        )}
+
         {/* Reference panel */}
         <View style={styles.refPanel}>
           <Text style={styles.refLabel}>New lights ordered:</Text>
@@ -274,6 +282,7 @@ const styles = StyleSheet.create({
   modeBadge: { alignSelf: 'flex-start', backgroundColor: '#FAECE7', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 3, marginBottom: 14 },
   modeBadgeText: { fontSize: 11, color: '#712B13', fontWeight: '500' },
   refPanel: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 0.5, borderColor: Colors.borderLight, marginBottom: 16 },
+  installerNotes: { backgroundColor: '#FAEEDA', borderColor: '#EF9F27' },
   refLabel: { fontSize: 11, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
   refVal: { fontSize: 13, color: Colors.textPrimary, fontWeight: '500', lineHeight: 20 },
   sectionLabel: { fontSize: 11, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },

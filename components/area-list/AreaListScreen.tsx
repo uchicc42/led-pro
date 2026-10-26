@@ -198,6 +198,13 @@ export default function AreaListScreen() {
         )}
 
         <TouchableOpacity
+          style={[styles.addBtn, { backgroundColor: '#fff', borderStyle: 'solid', borderColor: Colors.blue, marginBottom: 8 }]}
+          onPress={() => router.push(`/job-summary?jobId=${jobId}` as any)}
+        >
+          <Text style={[styles.addBtnText, { color: Colors.blue, fontWeight: '500' }]}>📋 Job summary</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: openIssues > 0 ? '#FAECE7' : '#fff', borderStyle: 'solid', borderColor: openIssues > 0 ? '#D08A6E' : '#c0cfe0', marginBottom: 8 }]}
           onPress={() => router.push(`/job-issues?jobId=${jobId}` as any)}
         >

@@ -18,14 +18,15 @@ import { useJobSettings } from './useJobSettings';
 
 export default function JobSettingsScreen() {
   const {
-    loading, notOnDevice, name, setName, location, setLocation, date, setDate, mode, setMode,
+    loading, notOnDevice, name, setName, companyName, setCompanyName, location, setLocation, date, setDate,
+    installerNotes, setInstallerNotes, mode, setMode,
     columns, saving, error, isReady, detailsDirty, savedFlash,
     saveDetails, saveAndGoBack, goBack,
   } = useJobSettings();
 
   function handleBack() {
     if (!detailsDirty) return goBack();
-    Alert.alert('Unsaved changes', 'Save your changes to the job name, location or date?', [
+    Alert.alert('Unsaved changes', 'Save your changes to the job details?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Discard', style: 'destructive', onPress: goBack },
       { text: 'Save', onPress: saveAndGoBack },
@@ -61,6 +62,15 @@ export default function JobSettingsScreen() {
           onChangeText={setName}
         />
 
+        <Text style={styles.fieldLabel}>Company / customer</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. Fort Cherry School District"
+          placeholderTextColor={Colors.textTertiary}
+          value={companyName}
+          onChangeText={setCompanyName}
+        />
+
         <Text style={styles.fieldLabel}>Location / address *</Text>
         <TextInput
           style={styles.input}
@@ -77,6 +87,16 @@ export default function JobSettingsScreen() {
           placeholderTextColor={Colors.textTertiary}
           value={date}
           onChangeText={setDate}
+        />
+
+        <Text style={styles.fieldLabel}>Installer notes</Text>
+        <TextInput
+          style={[styles.input, styles.notesInput]}
+          placeholder="Instructions for the electrician, e.g. lift needed, access after 3pm"
+          placeholderTextColor={Colors.textTertiary}
+          value={installerNotes}
+          onChangeText={setInstallerNotes}
+          multiline
         />
 
         {detailsDirty && (
@@ -151,6 +171,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '600', color: Colors.textPrimary },
   fieldLabel: { fontSize: 11, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, marginTop: 14 },
   input: { backgroundColor: '#fff', borderRadius: 10, borderWidth: 0.5, borderColor: Colors.borderLight, padding: 12, fontSize: 14, color: Colors.textPrimary },
+  notesInput: { minHeight: 80, textAlignVertical: 'top' },
   divider: { height: 0.5, backgroundColor: Colors.borderLight, marginVertical: 20 },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionLabel: { fontSize: 11, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },

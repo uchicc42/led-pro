@@ -8,14 +8,15 @@ import { useJobSettings } from './useJobSettings';
 
 export default function JobSettingsScreen() {
   const {
-    loading, notOnDevice, name, setName, location, setLocation, date, setDate, mode, setMode,
+    loading, notOnDevice, name, setName, companyName, setCompanyName, location, setLocation, date, setDate,
+    installerNotes, setInstallerNotes, mode, setMode,
     columns, saving, error, isReady, detailsDirty, savedFlash,
     saveDetails, saveAndGoBack, goBack,
   } = useJobSettings();
 
   function handleBack() {
     if (!detailsDirty) return goBack();
-    if (window.confirm('Save your changes to the job name, location or date before leaving?\n\nOK = save, Cancel = discard')) {
+    if (window.confirm('Save your changes to the job details before leaving?\n\nOK = save, Cancel = discard')) {
       saveAndGoBack();
     } else {
       goBack();
@@ -46,6 +47,11 @@ export default function JobSettingsScreen() {
           </div>
 
           <div style={webStyles.fieldGroup}>
+            <div style={webStyles.fieldLabel}>Company / customer</div>
+            <input style={webStyles.input} placeholder="e.g. Fort Cherry School District" value={companyName} onChange={e => setCompanyName(e.target.value)} />
+          </div>
+
+          <div style={webStyles.fieldGroup}>
             <div style={webStyles.fieldLabel}>Location / address *</div>
             <input style={webStyles.input} placeholder="e.g. Fort Cherry, PA" value={location} onChange={e => setLocation(e.target.value)} />
           </div>
@@ -53,6 +59,16 @@ export default function JobSettingsScreen() {
           <div style={webStyles.fieldGroup}>
             <div style={webStyles.fieldLabel}>Date *</div>
             <input style={webStyles.input} type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+
+          <div style={webStyles.fieldGroup}>
+            <div style={webStyles.fieldLabel}>Installer notes</div>
+            <textarea
+              style={{ ...webStyles.input, minHeight: 80, resize: 'vertical' }}
+              placeholder="Instructions for the electrician, e.g. lift needed, access after 3pm"
+              value={installerNotes}
+              onChange={e => setInstallerNotes(e.target.value)}
+            />
           </div>
 
           {detailsDirty && (

@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { NO_TYPE_COLOR, colorMap, ensureLightTypeColors, tintOf } from '../../constants/lightTypeColors';
 import { productCodes } from '../../lib/productCodes';
 import { supabase } from '../../supabase';
+import { FixtureTotal, SUMMARY_CSS, escapeHtml, fixtureTotals, summaryBodyHTML } from '../job-summary/summary';
 import { CONTROL_LABEL, ControlKind } from '../area-entry/useAreaEntry';
 
 export function useScopeExport() {
@@ -12,6 +13,7 @@ export function useScopeExport() {
   const [loading, setLoading] = useState(true);
   const [typeColors, setTypeColors] = useState<Map<string, string>>(new Map());
   const [codes, setCodes] = useState<Map<string, string>>(new Map());
+  const [types, setTypes] = useState<any[]>([]);
 
   // Read-only screen: reload everything each time it's shown.
   useFocusEffect(
@@ -35,10 +37,11 @@ export function useScopeExport() {
       .order('created_at');
     if (areaData) setAreas(areaData);
 
-    const { data: types } = await supabase.from('light_types').select('id, name, category, color, product_code');
+    const { data: types } = await supabase.from('light_types').select('id, name, category, color, product_code, sort_order');
     if (types) {
       setTypeColors(colorMap(await ensureLightTypeColors(types as any[])));
       setCodes(productCodes(types));
+      setTypes(types);
     }
     setLoading(false);
   }
@@ -48,7 +51,9 @@ export function useScopeExport() {
 
   const legend = legendFor(areas, typeColors);
 
-  return { jobId, job, areas, loading, kinds, typeColors, codes, legend, ...totals };
+  const fixtures = fixtureTotals(areas, types);
+
+  return { jobId, job, areas, loading, kinds, typeColors, codes, legend, fixtures, ...totals };
 }
 
 // Row colour follows the new light type; rows with no new light (removed only) are grey.
@@ -129,7 +134,10 @@ export function getTotals(areas: any[], kinds: ControlKind[] = []) {
 }
 
 // Printable scope-of-work document, shared by the web print flow and native expo-print.
-export function generateHTML(job: any, areas: any[], typeColors: Map<string, string> = new Map(), codes: Map<string, string> = new Map()) {
+export function generateHTML(
+  job: any, areas: any[], typeColors: Map<string, string> = new Map(), codes: Map<string, string> = new Map(),
+  fixtures: FixtureTotal[] = [],
+) {
   const legend = legendFor(areas, typeColors);
   const kinds = enabledControlKinds(job);
   const { totalOld, totalNew, totalSensors, totalPhotocells } = getTotals(areas, kinds);
@@ -194,11 +202,13 @@ export function generateHTML(job: any, areas: any[], typeColors: Map<string, str
         .total-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
         .footer { margin-top: 24px; font-size: 10px; color: #aaa; border-top: 1px solid #e0e7ef; padding-top: 10px; }
         .section-note { font-size: 10px; color: #666; margin-bottom: 8px; }
+        ${SUMMARY_CSS}
       </style>
     </head>
     <body>
       <div class="header">
         <div class="company">LED Pro — Scope of Work</div>
+        ${job?.company_name ? `<div class="job-title">${escapeHtml(job.company_name)}</div>` : ''}
         <div class="job-title">${job?.name || 'Untitled Job'}</div>
         <div class="job-meta">${job?.location || ''} &nbsp;|&nbsp; ${date} &nbsp;|&nbsp; Generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
       </div>
@@ -220,6 +230,8 @@ export function generateHTML(job: any, areas: any[], typeColors: Map<string, str
         ${kinds.includes('occupancy') ? `<div class="total-card"><div class="total-val">${totalSensors}</div><div class="total-label">Occupancy sensors</div></div>` : ''}
         ${kinds.includes('photocell') ? `<div class="total-card"><div class="total-val">${totalPhotocells}</div><div class="total-label">Photocells</div></div>` : ''}
       </div>
+
+      ${summaryBodyHTML(job, fixtures)}
 
       ${legend.length > 0 ? `<div class="legend">${legend.map(l => `<span class="legend-item"><span class="legend-swatch" style="background: ${l.color}"></span>${l.name}</span>`).join('')}</div>` : ''}
 

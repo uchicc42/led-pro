@@ -7,7 +7,7 @@ import { useNewJob } from './useNewJob';
 
 export default function NewJobScreen() {
   const {
-    name, setName, location, setLocation, date, setDate, mode, setMode,
+    name, setName, companyName, setCompanyName, location, setLocation, date, setDate, mode, setMode,
     columns, saving, error, isReady, createJob,
   } = useNewJob();
 
@@ -34,6 +34,17 @@ export default function NewJobScreen() {
               value={name}
               onChange={e => setName(e.target.value)}
               autoFocus
+            />
+          </div>
+
+          {/* Customer company */}
+          <div style={webStyles.fieldGroup}>
+            <div style={webStyles.fieldLabel}>Company / customer</div>
+            <input
+              style={webStyles.input}
+              placeholder="e.g. Fort Cherry School District"
+              value={companyName}
+              onChange={e => setCompanyName(e.target.value)}
             />
           </div>
 
