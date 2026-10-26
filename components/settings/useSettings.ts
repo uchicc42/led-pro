@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getCurrentUser } from '../../constants/userStore';
 import { ensureLightTypeColors } from '../../constants/lightTypeColors';
+import { byName } from '../../lib/byName';
 import { supabase } from '../../supabase';
 
 export function useSettings() {
@@ -158,8 +159,6 @@ export function useSettings() {
   const supplierOptions = [...new Set(lightTypes.map(t => t.supplier).filter(Boolean) as string[])]
     .sort((a, b) => a.localeCompare(b));
 
-  // Alphabetical, with numbers in order (2x2 before 10ft).
-  const byName = (a: any, b: any) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true, sensitivity: 'base' });
   const currentTypes = lightTypes.filter(t => t.category === 'current' && !t.archived).sort(byName);
   const newTypes = lightTypes.filter(t => t.category === 'new' && !t.archived).sort(byName);
   const sensorTypes = controlTypes.filter(t => t.kind === 'occupancy');

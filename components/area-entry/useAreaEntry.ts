@@ -6,6 +6,7 @@ import { deleteLightRowCascade } from '../../lib/offline/cascade';
 import { deleteRow, newId, patchRow, queueCall, saveRow } from '../../lib/offline/data';
 import { Row, StoreSnapshot, getSnapshot, useStore } from '../../lib/offline/store';
 import { trackJob } from '../../lib/offline/sync';
+import { byName } from '../../lib/byName';
 import { productCodes } from '../../lib/productCodes';
 
 export const LUMEN_OPTIONS = ['L', 'M', 'H', '3500K', '4000K', '5000K'];
@@ -138,7 +139,7 @@ export function useAreaEntry() {
   }, [store.version, areaId, dirty]);
 
   // Archived types (inactive or deleted in QuickBooks) aren't offered for new entries.
-  const lightTypeRows = store.all('light_types').filter(t => !t.archived).sort(bySort);
+  const lightTypeRows = store.all('light_types').filter(t => !t.archived).sort(byName);
   const lightTypes = {
     current: lightTypeRows.filter(t => t.category === 'current').map(t => t.name as string),
     new: lightTypeRows.filter(t => t.category === 'new').map(t => t.name as string),
