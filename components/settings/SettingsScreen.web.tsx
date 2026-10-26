@@ -85,22 +85,8 @@ export default function SettingsScreen() {
           {expandLights && (
             <div style={webStyles.expandPanel}>
 
-              <div style={webStyles.editHint}>Click a type to set its colour and mount options.</div>
-
-              {/* Current types */}
-              <div style={webStyles.typeGroupLabel}>Current lights</div>
-              <div style={webStyles.tagWrap}>
-                {currentTypes.map(lightTypeTag)}
-              </div>
-
-              {/* New types */}
-              <div style={{ ...webStyles.typeGroupLabel, marginTop: 16 }}>New LED lights</div>
-              <div style={webStyles.tagWrap}>
-                {newTypes.map(lightTypeTag)}
-              </div>
-
               {/* Add new type */}
-              <div style={webStyles.addTypeRow}>
+              <div style={{ ...webStyles.addTypeRow, marginTop: 0, marginBottom: 18 }}>
                 <input
                   style={webStyles.addTypeInput}
                   placeholder="Add new light type..."
@@ -123,6 +109,20 @@ export default function SettingsScreen() {
                 >
                   {saving ? '...' : 'Add'}
                 </button>
+              </div>
+
+              <div style={webStyles.editHint}>Click a type to set its colour and mount options.</div>
+
+              {/* Current types */}
+              <div style={webStyles.typeGroupLabel}>Current lights</div>
+              <div style={webStyles.tagWrap}>
+                {currentTypes.map(lightTypeTag)}
+              </div>
+
+              {/* New types */}
+              <div style={{ ...webStyles.typeGroupLabel, marginTop: 16 }}>New LED lights</div>
+              <div style={webStyles.tagWrap}>
+                {newTypes.map(lightTypeTag)}
               </div>
             </div>
           )}

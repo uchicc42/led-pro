@@ -89,18 +89,7 @@ export default function SettingsScreen() {
 
         {expandLights && (
           <View style={styles.expandPanel}>
-            <Text style={styles.editHint}>Tap a type to set its colour, mount options, or remove it.</Text>
-            <Text style={styles.typeGroupLabel}>Current lights</Text>
-            <View style={styles.tagWrap}>
-              {currentTypes.map(lightTypeTag)}
-            </View>
-
-            <Text style={[styles.typeGroupLabel, { marginTop: 14 }]}>New LED lights</Text>
-            <View style={styles.tagWrap}>
-              {newTypes.map(lightTypeTag)}
-            </View>
-
-            <View style={styles.addTypeRow}>
+            <View style={[styles.addTypeRow, styles.addTypeRowTop]}>
               <TextInput
                 style={styles.addTypeInput}
                 placeholder="Add new light type..."
@@ -119,6 +108,17 @@ export default function SettingsScreen() {
               <TouchableOpacity style={styles.addTypeBtn} onPress={addLightType}>
                 <Text style={styles.addTypeBtnText}>Add</Text>
               </TouchableOpacity>
+            </View>
+
+            <Text style={styles.editHint}>Tap a type to set its colour, mount options, or remove it.</Text>
+            <Text style={styles.typeGroupLabel}>Current lights</Text>
+            <View style={styles.tagWrap}>
+              {currentTypes.map(lightTypeTag)}
+            </View>
+
+            <Text style={[styles.typeGroupLabel, { marginTop: 14 }]}>New LED lights</Text>
+            <View style={styles.tagWrap}>
+              {newTypes.map(lightTypeTag)}
             </View>
           </View>
         )}
@@ -394,6 +394,7 @@ const styles = StyleSheet.create({
   tagText: { fontSize: 12, color: Colors.textSecondary },
   tagSelected: { backgroundColor: Colors.blue, borderColor: Colors.blue },
   addTypeRow: { flexDirection: 'row', gap: 8, marginTop: 16, alignItems: 'center' },
+  addTypeRowTop: { marginTop: 0, marginBottom: 16 },
   addTypeInput: { flex: 1, borderWidth: 0.5, borderColor: Colors.borderLight, borderRadius: 8, padding: 10, fontSize: 13, color: Colors.textPrimary, backgroundColor: '#fff' },
   categoryToggle: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 0.5, borderColor: Colors.borderLight, backgroundColor: '#fff' },
   categoryToggleActive: { borderColor: Colors.blue, backgroundColor: '#E6F1FB' },
