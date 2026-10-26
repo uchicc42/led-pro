@@ -21,6 +21,7 @@ export default function SettingsScreen() {
     newControlKind, setNewControlKind, addControlType, deleteControlType, sensorTypes, photocellTypes,
     editingType, setEditingTypeId, newMountOption, setNewMountOption,
     setLightTypeColor, addMountOption, removeMountOption,
+    supplierOptions, newSupplier, setNewSupplier, setLightTypeSupplier,
   } = useSettings();
 
   const lightTypeTag = (t: any) => (
@@ -275,6 +276,36 @@ export default function SettingsScreen() {
                     />
                   ))}
                 </div>
+
+                <div style={{ ...webStyles.typeGroupLabel, marginTop: 18 }}>Supplier</div>
+                {editingType.supplier_from_qb ? (
+                  <div style={webStyles.editHint}>{editingType.supplier} · from QuickBooks (Preferred vendor). Change it there, then sync.</div>
+                ) : (
+                  <>
+                    <div style={webStyles.editHint}>Shown on the fixture summary. Click a supplier to choose it, click again to clear.</div>
+                    <div style={webStyles.tagWrap}>
+                      {supplierOptions.map(s => (
+                        <div
+                          key={s}
+                          style={{ ...webStyles.tag, cursor: 'pointer', ...(editingType.supplier === s ? { background: Colors.blue, borderColor: Colors.blue, color: '#fff' } : {}) }}
+                          onClick={() => setLightTypeSupplier(editingType.id, editingType.supplier === s ? null : s)}
+                        >
+                          {s}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={webStyles.addTypeRow}>
+                      <input
+                        style={webStyles.addTypeInput}
+                        placeholder="New supplier, e.g. Ledvance"
+                        value={newSupplier}
+                        onChange={e => setNewSupplier(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && newSupplier.trim()) setLightTypeSupplier(editingType.id, newSupplier); }}
+                      />
+                      <button style={webStyles.addTypeBtn} onClick={() => newSupplier.trim() && setLightTypeSupplier(editingType.id, newSupplier)}>Set</button>
+                    </div>
+                  </>
+                )}
               </>
             )}
 

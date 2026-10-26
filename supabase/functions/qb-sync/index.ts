@@ -7,6 +7,8 @@
 // - New items are added; renamed items are renamed (matched by QuickBooks id).
 // - Items made inactive or deleted in QuickBooks are archived (hidden from dropdowns).
 // - An existing light type with the same name is linked rather than duplicated.
+// - The item's Preferred vendor becomes the light type's supplier. Items without one keep the
+//   supplier set in the app.
 //
 // Called by: owners/partners ("Sync now"), qb-callback (first sync), and the daily schedule
 // (sends the x-cron-secret header).
@@ -28,7 +30,10 @@ const reply = (status: number, body: Record<string, unknown>) =>
 const API = (env: string) =>
   env === 'sandbox' ? 'https://sandbox-quickbooks.api.intuit.com' : 'https://quickbooks.api.intuit.com';
 
-type QbItem = { Id: string; Name: string; Description?: string; Type: string; Active: boolean };
+type QbItem = {
+  Id: string; Name: string; Description?: string; Type: string; Active: boolean;
+  PrefVendorRef?: { value: string; name?: string };
+};
 
 // Writes a failed QuickBooks response to the function logs (Edge Functions → qb-sync → Logs),
 // including Intuit's intuit_tid so their support can trace the request. Returns the tid.
@@ -117,7 +122,7 @@ Deno.serve(async (req) => {
   const items: QbItem[] = [];
   let renewedAfterRejection = false;
   for (let start = 1; ; start += 1000) {
-    const query = `select Id, Name, Description, Type, Active from Item where Type = 'NonInventory' and Active in (true, false) startposition ${start} maxresults 1000`;
+    const query = `select * from Item where Type = 'NonInventory' and Active in (true, false) startposition ${start} maxresults 1000`;
     const res = await fetch(
       `${API(connection.environment)}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(query)}&minorversion=75`,
       { headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' } },
@@ -159,13 +164,35 @@ Deno.serve(async (req) => {
     return (activeCounts.get(desc.toLowerCase()) ?? 0) > 1 && desc !== i.Name.trim() ? `${desc} · ${i.Name.trim()}` : desc;
   };
 
-  const { data: types } = await admin.from('light_types').select('id, name, category, sort_order, quickbooks_item_id, product_code, archived');
+  // Vendor names for preferred vendors whose reference came without a name. If this lookup
+  // fails, those suppliers are left as they are rather than failing the sync.
+  const vendorNames = new Map<string, string>();
+  if (items.some(i => i.PrefVendorRef && !i.PrefVendorRef.name)) {
+    const query = 'select Id, DisplayName from Vendor startposition 1 maxresults 1000';
+    const res = await fetch(
+      `${API(connection.environment)}/v3/company/${connection.realm_id}/query?query=${encodeURIComponent(query)}&minorversion=75`,
+      { headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' } },
+    );
+    if (res.ok) {
+      const vendors: { Id: string; DisplayName?: string }[] = (await res.json())?.QueryResponse?.Vendor ?? [];
+      vendors.forEach(v => { if (v.DisplayName) vendorNames.set(v.Id, v.DisplayName.trim()); });
+    } else {
+      await logQbError('vendor_query', res);
+    }
+  }
+  // undefined = vendor set but its name is unknown (leave the supplier alone); null = no vendor.
+  const supplierOf = (i: QbItem): string | null | undefined => {
+    if (!i.PrefVendorRef?.value) return null;
+    return i.PrefVendorRef.name?.trim() || vendorNames.get(i.PrefVendorRef.value);
+  };
+
+  const { data: types } = await admin.from('light_types').select('id, name, category, sort_order, quickbooks_item_id, product_code, archived, supplier, supplier_from_qb');
   const all = types ?? [];
   const byQbId = new Map(all.filter(t => t.quickbooks_item_id).map(t => [t.quickbooks_item_id as string, t]));
   const unlinkedNew = new Map(all.filter(t => !t.quickbooks_item_id && t.category === 'new').map(t => [t.name.trim().toLowerCase(), t]));
   let nextSort = Math.max(0, ...all.filter(t => t.category === 'new').map(t => t.sort_order ?? 0)) + 1;
 
-  let added = 0, updated = 0, archived = 0;
+  let added = 0, updated = 0, archived = 0, withSupplier = 0;
   const seen = new Set<string>();
 
   for (const item of items) {
@@ -173,12 +200,22 @@ Deno.serve(async (req) => {
     const name = displayName(item);
     const productCode = item.Name.trim();
     const existing = byQbId.get(item.Id) ?? unlinkedNew.get(name.toLowerCase());
+    const supplier = supplierOf(item);
+    if (supplier && item.Active) withSupplier++;
     if (existing) {
       const patch: Record<string, unknown> = {};
       if (existing.quickbooks_item_id !== item.Id) patch.quickbooks_item_id = item.Id;
       if (existing.name !== name) patch.name = name;
       if (existing.product_code !== productCode) patch.product_code = productCode;
       if (existing.archived !== !item.Active) patch.archived = !item.Active;
+      if (supplier && (existing.supplier !== supplier || !existing.supplier_from_qb)) {
+        patch.supplier = supplier;
+        patch.supplier_from_qb = true;
+      } else if (supplier === null && existing.supplier_from_qb) {
+        // The vendor was removed in QuickBooks: the supplier can be set in the app again.
+        patch.supplier = null;
+        patch.supplier_from_qb = false;
+      }
       if (Object.keys(patch).length > 0) {
         await admin.from('light_types').update(patch).eq('id', existing.id);
         if (patch.archived === true) archived++; else updated++;
@@ -186,6 +223,7 @@ Deno.serve(async (req) => {
     } else if (item.Active) {
       await admin.from('light_types').insert({
         name, product_code: productCode, category: 'new', sort_order: nextSort++, quickbooks_item_id: item.Id, archived: false,
+        supplier: supplier ?? null, supplier_from_qb: !!supplier,
       });
       added++;
     }
@@ -199,7 +237,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  const result = `${items.length} items checked: ${added} added, ${updated} updated, ${archived} hidden`;
+  const result = `${items.length} items checked: ${added} added, ${updated} updated, ${archived} hidden, ${withSupplier} with a supplier`;
   await admin.from('qb_connection').update({ last_synced_at: new Date().toISOString(), last_sync_result: result }).eq('id', 1);
-  return reply(200, { ok: true, added, updated, archived, checked: items.length, result });
+  return reply(200, { ok: true, added, updated, archived, withSupplier, checked: items.length, result });
 });

@@ -37,7 +37,7 @@ export function useScopeExport() {
       .order('created_at');
     if (areaData) setAreas(areaData);
 
-    const { data: types } = await supabase.from('light_types').select('id, name, category, color, product_code, sort_order');
+    const { data: types } = await supabase.from('light_types').select('id, name, category, color, product_code, sort_order, supplier');
     if (types) {
       setTypeColors(colorMap(await ensureLightTypeColors(types as any[])));
       setCodes(productCodes(types));

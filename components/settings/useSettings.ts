@@ -24,6 +24,7 @@ export function useSettings() {
   // Light type being edited (colour, mount options) in the type editor.
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [newMountOption, setNewMountOption] = useState('');
+  const [newSupplier, setNewSupplier] = useState('');
 
   useEffect(() => {
     loadAll();
@@ -146,7 +147,16 @@ export function useSettings() {
     await patchLightType(id, { mount_options: (type.mount_options || []).filter((o: string) => o !== option) });
   }
 
+  // Suppliers from QuickBooks can only be changed there; this sets or clears an app-set one.
+  async function setLightTypeSupplier(id: string, supplier: string | null) {
+    await patchLightType(id, { supplier: supplier?.trim() || null });
+    setNewSupplier('');
+  }
+
   const editingType = lightTypes.find(t => t.id === editingTypeId) ?? null;
+  // Every supplier already in use, offered as one-tap choices.
+  const supplierOptions = [...new Set(lightTypes.map(t => t.supplier).filter(Boolean) as string[])]
+    .sort((a, b) => a.localeCompare(b));
 
   const currentTypes = lightTypes.filter(t => t.category === 'current' && !t.archived);
   const newTypes = lightTypes.filter(t => t.category === 'new' && !t.archived);
@@ -163,5 +173,6 @@ export function useSettings() {
     newControlKind, setNewControlKind, addControlType, deleteControlType, sensorTypes, photocellTypes,
     editingType, setEditingTypeId, newMountOption, setNewMountOption,
     setLightTypeColor, addMountOption, removeMountOption,
+    supplierOptions, newSupplier, setNewSupplier, setLightTypeSupplier,
   };
 }

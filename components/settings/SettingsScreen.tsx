@@ -35,6 +35,7 @@ export default function SettingsScreen() {
     newControlKind, setNewControlKind, addControlType, deleteControlType, sensorTypes, photocellTypes,
     editingType, setEditingTypeId, newMountOption, setNewMountOption,
     setLightTypeColor, addMountOption, removeMountOption,
+    supplierOptions, newSupplier, setNewSupplier, setLightTypeSupplier,
   } = useSettings();
 
   const lightTypeTag = (t: any) => (
@@ -274,6 +275,39 @@ export default function SettingsScreen() {
                       />
                     ))}
                   </View>
+
+                  <Text style={[styles.typeGroupLabel, { marginTop: 14 }]}>Supplier</Text>
+                  {editingType.supplier_from_qb ? (
+                    <Text style={styles.editHint}>{editingType.supplier} · from QuickBooks (Preferred vendor). Change it there, then sync.</Text>
+                  ) : (
+                    <>
+                      <Text style={styles.editHint}>Shown on the fixture summary. Tap a supplier to choose it, tap again to clear.</Text>
+                      <View style={styles.tagWrap}>
+                        {supplierOptions.map(s => (
+                          <TouchableOpacity
+                            key={s}
+                            style={[styles.tag, editingType.supplier === s && styles.tagSelected]}
+                            onPress={() => setLightTypeSupplier(editingType.id, editingType.supplier === s ? null : s)}
+                          >
+                            <Text style={[styles.tagText, editingType.supplier === s && { color: '#fff' }]}>{s}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <View style={styles.addTypeRow}>
+                        <TextInput
+                          style={styles.addTypeInput}
+                          placeholder="New supplier, e.g. Ledvance"
+                          placeholderTextColor={Colors.textTertiary}
+                          value={newSupplier}
+                          onChangeText={setNewSupplier}
+                          onSubmitEditing={() => newSupplier.trim() && setLightTypeSupplier(editingType.id, newSupplier)}
+                        />
+                        <TouchableOpacity style={styles.addTypeBtn} onPress={() => newSupplier.trim() && setLightTypeSupplier(editingType.id, newSupplier)}>
+                          <Text style={styles.addTypeBtnText}>Set</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
                 </>
               )}
 
@@ -358,6 +392,7 @@ const styles = StyleSheet.create({
   tagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: Colors.bgSecondary, borderWidth: 0.5, borderColor: Colors.borderLight },
   tagText: { fontSize: 12, color: Colors.textSecondary },
+  tagSelected: { backgroundColor: Colors.blue, borderColor: Colors.blue },
   addTypeRow: { flexDirection: 'row', gap: 8, marginTop: 16, alignItems: 'center' },
   addTypeInput: { flex: 1, borderWidth: 0.5, borderColor: Colors.borderLight, borderRadius: 8, padding: 10, fontSize: 13, color: Colors.textPrimary, backgroundColor: '#fff' },
   categoryToggle: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 0.5, borderColor: Colors.borderLight, backgroundColor: '#fff' },
