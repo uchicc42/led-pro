@@ -146,11 +146,16 @@ export function replaceScope(
   isPending: (t: Table, id: string) => boolean,
 ) {
   const m = data[t];
+  // Device-only fields (e.g. a photo's on-device file) aren't on the server; carry them over.
+  const localFields = new Map<string, Record<string, any>>();
   for (const [id, r] of m) {
-    if (inScope(r) && !isPending(t, id)) m.delete(id);
+    if (inScope(r) && !isPending(t, id)) {
+      localFields.set(id, Object.fromEntries(Object.entries(r).filter(([k]) => k.startsWith('_'))));
+      m.delete(id);
+    }
   }
   for (const r of rows) {
-    if (!isPending(t, r.id)) m.set(r.id, { ...m.get(r.id), ...r });
+    if (!isPending(t, r.id)) m.set(r.id, { ...m.get(r.id), ...localFields.get(r.id), ...r });
   }
   schedulePersist(t);
   notify();

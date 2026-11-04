@@ -38,12 +38,16 @@ describe('replaceScope (refreshing from the server)', () => {
     expect(store.getRow('areas', 'a1')).toBeDefined();
   });
 
-  // Known bug: replaceScope deletes the old row before merging, so the on-device photo link is
-  // lost once a photo has uploaded. Change `it.failing` back to `it` when that is fixed.
-  it.failing('keeps device-only fields such as the on-device photo file', () => {
+  it('keeps device-only fields such as the on-device photo file', () => {
     store.putRow('area_photos', { id: 'p1', area_id: 'a1', _localUri: 'file:///p1.jpg' });
     store.replaceScope('area_photos', r => r.area_id === 'a1', [{ id: 'p1', area_id: 'a1', path: 'a1/p1.jpg' }], notPending);
     expect(store.getRow('area_photos', 'p1')).toEqual({ id: 'p1', area_id: 'a1', _localUri: 'file:///p1.jpg', path: 'a1/p1.jpg' });
+  });
+
+  it('takes server values over old device values for normal fields', () => {
+    store.putRow('areas', { id: 'a1', job_id: 'j1', name: 'Old', notes: 'old note' });
+    store.replaceScope('areas', r => r.job_id === 'j1', [{ id: 'a1', job_id: 'j1', name: 'New', notes: null }], notPending);
+    expect(store.getRow('areas', 'a1')).toEqual({ id: 'a1', job_id: 'j1', name: 'New', notes: null });
   });
 });
 
