@@ -20,6 +20,7 @@ import { registerForPushNotifications } from '../../constants/notifications';
 import { clearCurrentUser, getCurrentUser } from '../../constants/userStore';
 import QuickBooksSection from './QuickBooksSection';
 import TeamSection from './TeamSection';
+import { appVersionLabel } from '../../lib/appVersion';
 import { useSettings } from './useSettings';
 
 // Native UI. The web UI lives in SettingsScreen.web.tsx; Metro picks the right file per platform.
@@ -241,7 +242,7 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionTitle, { color: '#A32D2D' }]}>Log out</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>LED Pro · v1.0.0</Text>
+        <Text style={styles.version}>{appVersionLabel()}</Text>
 
       </KeyboardScrollView>
 

@@ -2,7 +2,7 @@
   "expo": {
     "name": "LED Pro",
     "slug": "led-pro",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "ledpro",
@@ -72,6 +72,12 @@
         "projectId": "266d298e-b02b-4eeb-9b83-3895b31d9746"
       }
     },
-    "owner": "uchicc"
+    "owner": "uchicc",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/266d298e-b02b-4eeb-9b83-3895b31d9746"
+    }
   }
 }

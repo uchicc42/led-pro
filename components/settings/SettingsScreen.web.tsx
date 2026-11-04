@@ -6,6 +6,7 @@ import { LIGHT_TYPE_PALETTE } from '../../constants/lightTypeColors';
 import { clearCurrentUser } from '../../constants/userStore';
 import QuickBooksSection from './QuickBooksSection';
 import TeamSection from './TeamSection';
+import { appVersionLabel } from '../../lib/appVersion';
 import { useSettings } from './useSettings';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses SettingsScreen.tsx.
@@ -249,7 +250,7 @@ export default function SettingsScreen() {
           </div>
         </div>
 
-        <div style={webStyles.version}>LED Pro · v1.0.0</div>
+        <div style={webStyles.version}>{appVersionLabel()}</div>
       </div>
 
       {editingType && (
