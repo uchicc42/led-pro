@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import { NotOnDevice } from '../ui/not-on-device';
 import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
+import ReorderList from './ReorderList';
 import { useAreaList } from './useAreaList';
 
 // Native UI. The web UI lives in AreaListScreen.web.tsx; Metro picks the right file per platform.
@@ -22,11 +23,12 @@ export default function AreaListScreen() {
   const {
     jobId, job, loading, notOnDevice, addingArea, setAddingArea, newAreaName, setNewAreaName,
     filter, setFilter, jobNotes, notesSaved, saveJobNotes, addArea, toggleComplete, deleteArea,
-    getFilteredAreas, completed, total, progress, openIssues,
+    getFilteredAreas, completed, total, progress, openIssues, reordering, setReordering, moveArea,
   } = useAreaList({ live: 'realtime' });
   // The role check reads the web session store, which doesn't exist on native, so this was always false here.
   const isElectrician = false;
   const scrollRef = useRef<ScrollView>(null);
+  const [dragging, setDragging] = useState(false);
 
   if (notOnDevice) return <NotOnDevice />;
 
@@ -38,7 +40,7 @@ export default function AreaListScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardScrollView ref={scrollRef} contentContainerStyle={styles.scroll}>
+      <KeyboardScrollView ref={scrollRef} contentContainerStyle={styles.scroll} scrollEnabled={!dragging}>
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.push('/home')}>
@@ -73,21 +75,41 @@ export default function AreaListScreen() {
           <View style={[styles.progressFill, { width: `${progress}%` }]} />
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-          {['all', 'todo', 'complete', 'mine'].map(f => (
+        <View style={styles.listBar}>
+          {reordering ? (
+            <Text style={styles.reorderHint}>Drag ☰ or tap ▲ ▼ to move areas</Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+              {['all', 'todo', 'complete', 'mine'].map(f => (
+                <TouchableOpacity
+                  key={f}
+                  style={[styles.filterPill, filter === f && styles.filterPillActive]}
+                  onPress={() => setFilter(f)}
+                >
+                  <Text style={[styles.filterPillText, filter === f && styles.filterPillTextActive]}>
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+          {total > 1 && (
             <TouchableOpacity
-              key={f}
-              style={[styles.filterPill, filter === f && styles.filterPillActive]}
-              onPress={() => setFilter(f)}
+              style={[styles.reorderBtn, reordering && styles.reorderBtnDone]}
+              onPress={() => setReordering(!reordering)}
             >
-              <Text style={[styles.filterPillText, filter === f && styles.filterPillTextActive]}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
+              <Text style={[styles.reorderBtnText, reordering && { color: '#fff' }]}>
+                {reordering ? 'Done' : '↕ Reorder'}
               </Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+          )}
+        </View>
 
-        {getFilteredAreas().map(area => (
+        {reordering && (
+          <ReorderList areas={getFilteredAreas()} onMove={moveArea} onDraggingChange={setDragging} />
+        )}
+
+        {!reordering && getFilteredAreas().map(area => (
           <View
             key={area.id}
             style={[styles.areaCard, { borderLeftColor: area.is_complete ? Colors.green : Colors.blue }]}
@@ -164,7 +186,7 @@ export default function AreaListScreen() {
           </View>
         ))}
 
-        {getFilteredAreas().length === 0 && (
+        {!reordering && getFilteredAreas().length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>
               {filter === 'all' ? 'No areas yet — add your first one!' : `No ${filter} areas.`}
@@ -271,7 +293,12 @@ const styles = StyleSheet.create({
   progressPct: { fontSize: 13, color: Colors.blue, fontWeight: '500' },
   progressTrack: { height: 5, backgroundColor: Colors.borderLight, borderRadius: 3, marginBottom: 16 },
   progressFill: { height: 5, backgroundColor: Colors.blue, borderRadius: 3 },
-  filterRow: { marginBottom: 14 },
+  listBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  filterRow: { flex: 1 },
+  reorderHint: { flex: 1, fontSize: 12, color: Colors.textSecondary },
+  reorderBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 0.5, borderColor: Colors.blue, backgroundColor: '#fff' },
+  reorderBtnDone: { backgroundColor: Colors.blue },
+  reorderBtnText: { fontSize: 12, color: Colors.blue, fontWeight: '500' },
   filterPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 0.5, borderColor: Colors.borderLight, backgroundColor: '#fff', marginRight: 8 },
   filterPillActive: { backgroundColor: '#E6F1FB', borderColor: Colors.blue },
   filterPillText: { fontSize: 12, color: Colors.textSecondary },

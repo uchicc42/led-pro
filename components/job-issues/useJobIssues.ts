@@ -2,6 +2,7 @@ import type { ImagePickerAsset } from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { getCurrentUser } from '../../constants/userStore';
+import { byAreaOrder } from '../../lib/areaOrder';
 import { useOnline } from '../../lib/offline/connectivity';
 import { deleteRow, newId, patchRow, queueCall, saveRow } from '../../lib/offline/data';
 import { useStore } from '../../lib/offline/store';
@@ -40,7 +41,7 @@ export function useJobIssues() {
   // Everything comes from the device copy, so issues can be logged and resolved offline.
   const job = store.get('jobs', jobId) ?? null;
   const areas = store.where('areas', a => a.job_id === jobId)
-    .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+    .sort(byAreaOrder)
     .map((a): any => ({ ...a, light_rows: store.where('light_rows', r => r.area_id === a.id) }));
   const issues = store.where('job_issues', i => i.job_id === jobId)
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));

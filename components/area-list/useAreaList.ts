@@ -1,6 +1,7 @@
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getCurrentUser } from '../../constants/userStore';
+import { byAreaOrder, reorderPatches } from '../../lib/areaOrder';
 import { isOnline, useOnline } from '../../lib/offline/connectivity';
 import { deleteAreaCascade } from '../../lib/offline/cascade';
 import { newId, patchRow, queueCall, saveRow } from '../../lib/offline/data';
@@ -22,6 +23,7 @@ export function useAreaList({ live, initialUser }: Options) {
   const [addingArea, setAddingArea] = useState(false);
   const [newAreaName, setNewAreaName] = useState('');
   const [filter, setFilter] = useState('all');
+  const [reordering, setReordering] = useState(false);
   const [currentUser, setCurrentUser_state] = useState<any>(() => initialUser?.() ?? null);
   const [jobNotes, setJobNotes] = useState('');
   const [notesSaved, setNotesSaved] = useState(false);
@@ -78,7 +80,7 @@ export function useAreaList({ live, initialUser }: Options) {
   }
 
   const areas = store.where('areas', a => a.job_id === jobId)
-    .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+    .sort(byAreaOrder)
     .map((a): any => ({
       ...a,
       // Display helpers used by the screens (never written back).
@@ -120,7 +122,13 @@ export function useAreaList({ live, initialUser }: Options) {
     deleteAreaCascade(area.id);
   }
 
+  function moveArea(from: number, to: number) {
+    reorderPatches(areas, from, to).forEach(({ id, sort_order }) => patchRow('areas', id, { sort_order }));
+  }
+
   function getFilteredAreas() {
+    // Reordering works on the whole list, so filters are set aside meanwhile.
+    if (reordering) return areas;
     switch (filter) {
       case 'todo': return areas.filter(a => !a.is_complete);
       case 'complete': return areas.filter(a => a.is_complete);
@@ -141,6 +149,6 @@ export function useAreaList({ live, initialUser }: Options) {
   return {
     jobId, job, loading, notOnDevice, addingArea, setAddingArea, newAreaName, setNewAreaName,
     filter, setFilter, jobNotes, notesSaved, saveJobNotes, addArea, toggleComplete, deleteArea,
-    getFilteredAreas, completed, total, progress, openIssues,
+    getFilteredAreas, completed, total, progress, openIssues, reordering, setReordering, moveArea,
   };
 }

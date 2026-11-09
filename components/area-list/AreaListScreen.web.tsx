@@ -3,6 +3,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { NotOnDevice } from '../ui/not-on-device';
+import ReorderList from './ReorderList';
 import { useAreaList } from './useAreaList';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses AreaListScreen.tsx.
@@ -22,7 +23,7 @@ export default function AreaListScreen() {
   const {
     jobId, job, loading, notOnDevice, addingArea, setAddingArea, newAreaName, setNewAreaName,
     filter, setFilter, jobNotes, notesSaved, saveJobNotes, addArea, toggleComplete, deleteArea,
-    getFilteredAreas, completed, total, progress, openIssues,
+    getFilteredAreas, completed, total, progress, openIssues, reordering, setReordering, moveArea,
   } = useAreaList({ live: 'poll', initialUser: readStoredSession });
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const isElectrician = readStoredSession()?.role === 'electrician';
@@ -82,7 +83,9 @@ export default function AreaListScreen() {
         </div>
 
         <div style={webStyles.filterRow}>
-          {['all', 'todo', 'complete', 'mine'].map(f => (
+          {reordering ? (
+            <span style={webStyles.reorderHint}>Drag an area, or use ▲ ▼, to change the order</span>
+          ) : ['all', 'todo', 'complete', 'mine'].map(f => (
             <div
               key={f}
               style={{ ...webStyles.filterPill, ...(filter === f ? webStyles.filterPillActive : {}) }}
@@ -91,9 +94,19 @@ export default function AreaListScreen() {
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </div>
           ))}
+          {!isElectrician && total > 1 && (
+            <button
+              style={{ ...webStyles.reorderBtn, ...(reordering ? webStyles.reorderBtnDone : {}) }}
+              onClick={() => setReordering(!reordering)}
+            >
+              {reordering ? 'Done' : '↕ Reorder'}
+            </button>
+          )}
         </div>
 
-        <div style={webStyles.areaList}>
+        {reordering && <ReorderList areas={getFilteredAreas()} onMove={moveArea} />}
+
+        <div style={{ ...webStyles.areaList, ...(reordering ? { display: 'none' } : {}) }}>
           {getFilteredAreas().map(area => (
             <div key={area.id} style={{
               ...webStyles.areaCard,
@@ -261,7 +274,10 @@ const webStyles: Record<string, CSSProperties> = {
   progressLabel: { display: 'flex', justifyContent: 'space-between', fontSize: 13, color: Colors.textSecondary, marginBottom: 6 },
   progressTrack: { height: 6, background: '#e0e7ef', borderRadius: 3 },
   progressFill: { height: 6, background: Colors.blue, borderRadius: 3, transition: 'width 0.3s' },
-  filterRow: { display: 'flex', gap: 8, marginBottom: 20 },
+  filterRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 },
+  reorderHint: { fontSize: 13, color: Colors.textSecondary },
+  reorderBtn: { marginLeft: 'auto', padding: '5px 14px', borderRadius: 20, border: `0.5px solid ${Colors.blue}`, background: '#fff', color: Colors.blue, fontSize: 12, fontWeight: '500', cursor: 'pointer' },
+  reorderBtnDone: { background: Colors.blue, color: '#fff' },
   filterPill: { padding: '5px 14px', borderRadius: 20, borderWidth: 0.5, borderStyle: 'solid', borderColor: '#e0e7ef', background: '#fff', fontSize: 12, color: Colors.textSecondary, cursor: 'pointer' },
   filterPillActive: { background: '#E6F1FB', color: '#0C447C', borderColor: Colors.blue },
   areaList: { display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 },
