@@ -27,6 +27,7 @@ export default function AreaListScreen() {
   } = useAreaList({ live: 'poll', initialUser: readStoredSession });
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const isElectrician = readStoredSession()?.role === 'electrician';
+  const closeAddArea = () => { setAddingArea(false); setNewAreaName(''); };
 
   useEffect(() => {
     const handler = () => setMenuOpen(null);
@@ -218,20 +219,7 @@ export default function AreaListScreen() {
           />
         </div>
 
-        {!isElectrician && (addingArea ? (
-          <div style={webStyles.addAreaForm}>
-            <input
-              autoFocus
-              style={webStyles.addAreaInput}
-              placeholder="Area name (e.g. Gym, Hallway A)"
-              value={newAreaName}
-              onChange={e => setNewAreaName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') addArea(); if (e.key === 'Escape') setAddingArea(false); }}
-            />
-            <button style={webStyles.addAreaConfirm} onClick={addArea}>Add</button>
-            <button style={webStyles.addAreaCancel} onClick={() => { setAddingArea(false); setNewAreaName(''); }}>Cancel</button>
-          </div>
-        ) : (
+        {!isElectrician && (
         <>
           <button
             style={{ ...webStyles.addBtn, background: Colors.blue, color: '#fff', border: 'none', marginBottom: 10 }}
@@ -255,15 +243,40 @@ export default function AreaListScreen() {
             + Add area
           </button>
         </>
-        ))}
+        )}
       </div>
+
+      {/* Floating add button: stays in the corner while the page scrolls. */}
+      {!isElectrician && !reordering && (
+        <button style={webStyles.fab} onClick={() => setAddingArea(true)} aria-label="Add area" title="Add area">+</button>
+      )}
+
+      {addingArea && (
+        <div style={webStyles.modalOverlay} onClick={closeAddArea}>
+          <div style={webStyles.addAreaForm} onClick={e => e.stopPropagation()}>
+            <div style={webStyles.addAreaTitle}>New area</div>
+            <input
+              autoFocus
+              style={webStyles.addAreaInput}
+              placeholder="Area name (e.g. Gym, Hallway A)"
+              value={newAreaName}
+              onChange={e => setNewAreaName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addArea(); if (e.key === 'Escape') closeAddArea(); }}
+            />
+            <div style={webStyles.addAreaBtns}>
+              <button style={webStyles.addAreaCancel} onClick={closeAddArea}>Cancel</button>
+              <button style={webStyles.addAreaConfirm} onClick={addArea}>Add</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 const webStyles: Record<string, CSSProperties> = {
   page: { minHeight: '100vh', background: Colors.bgSecondary, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', overflowY: 'auto' },
-  container: { maxWidth: 800, margin: '0 auto', padding: '40px 32px 80px' },
+  container: { maxWidth: 800, margin: '0 auto', padding: '40px 32px 110px' }, // bottom room for the floating add button
   header: { display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 20 },
   backBtn: { padding: '8px 16px', background: '#fff', border: '0.5px solid #e0e7ef', borderRadius: 8, fontSize: 13, cursor: 'pointer', color: Colors.textSecondary, whiteSpace: 'nowrap' },
   headerTitle: { fontSize: 24, fontWeight: '600', color: Colors.textPrimary, marginBottom: 6 },
@@ -293,8 +306,16 @@ const webStyles: Record<string, CSSProperties> = {
   areaCount: { fontSize: 12, color: Colors.textTertiary },
   enteredBy: { fontSize: 12, color: Colors.textTertiary },
   emptyState: { background: '#fff', borderRadius: 12, padding: 40, textAlign: 'center', color: Colors.textTertiary, border: '0.5px dashed #e0e7ef' },
-  addAreaForm: { display: 'flex', gap: 10, alignItems: 'center', marginTop: 4 },
-  addAreaInput: { flex: 1, padding: '10px 14px', fontSize: 14, border: '0.5px solid #e0e7ef', borderRadius: 10, outline: 'none', fontFamily: 'inherit' },
+  fab: {
+    position: 'fixed', right: 32, bottom: 32, width: 58, height: 58, borderRadius: 29, border: 'none',
+    background: Colors.blue, color: '#fff', fontSize: 30, lineHeight: '58px', cursor: 'pointer',
+    boxShadow: '0 4px 14px rgba(0,0,0,0.25)', zIndex: 50,
+  },
+  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 100 },
+  addAreaForm: { background: '#fff', borderRadius: 12, padding: 20, width: '100%', maxWidth: 440, boxShadow: '0 8px 30px rgba(0,0,0,0.2)' },
+  addAreaTitle: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary, marginBottom: 12 },
+  addAreaBtns: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 },
+  addAreaInput: { width: '100%', boxSizing: 'border-box', padding: '10px 14px', fontSize: 14, border: '0.5px solid #e0e7ef', borderRadius: 10, outline: 'none', fontFamily: 'inherit' },
   addAreaConfirm: { padding: '10px 20px', background: Colors.blue, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, cursor: 'pointer', fontWeight: '500' },
   addAreaCancel: { padding: '10px 16px', background: '#fff', color: Colors.textSecondary, border: '0.5px solid #e0e7ef', borderRadius: 10, fontSize: 14, cursor: 'pointer' },
   addBtn: { width: '100%', padding: '12px', background: 'transparent', border: '1px dashed #c0cfe0', borderRadius: 10, fontSize: 14, color: Colors.blue, cursor: 'pointer', textAlign: 'center' },

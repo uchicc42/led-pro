@@ -1,8 +1,11 @@
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,8 +30,8 @@ export default function AreaListScreen() {
   } = useAreaList({ live: 'realtime' });
   // The role check reads the web session store, which doesn't exist on native, so this was always false here.
   const isElectrician = false;
-  const scrollRef = useRef<ScrollView>(null);
   const [dragging, setDragging] = useState(false);
+  const closeAddArea = () => { setAddingArea(false); setNewAreaName(''); };
 
   if (notOnDevice) return <NotOnDevice />;
 
@@ -40,7 +43,7 @@ export default function AreaListScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardScrollView ref={scrollRef} contentContainerStyle={styles.scroll} scrollEnabled={!dragging}>
+      <KeyboardScrollView contentContainerStyle={styles.scroll} scrollEnabled={!dragging}>
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.push('/home')}>
@@ -242,8 +245,26 @@ export default function AreaListScreen() {
           <Text style={[styles.addBtnText, { color: Colors.textSecondary }]}>🕐 Change log</Text>
         </TouchableOpacity>
 
-        {!isElectrician && (addingArea ? (
+        {!isElectrician && (
+          <TouchableOpacity style={styles.addBtn} onPress={() => setAddingArea(true)}>
+            <Text style={styles.addBtnText}>+ Add area</Text>
+          </TouchableOpacity>
+        )}
+
+      </KeyboardScrollView>
+
+      {/* Floating add button: stays in the corner while the list scrolls. */}
+      {!isElectrician && !reordering && (
+        <TouchableOpacity style={styles.fab} onPress={() => setAddingArea(true)} accessibilityLabel="Add area">
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
+      )}
+
+      <Modal visible={addingArea} transparent animationType="fade" onRequestClose={closeAddArea}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={closeAddArea} accessibilityLabel="Cancel" />
           <View style={styles.addAreaForm}>
+            <Text style={styles.addAreaTitle}>New area</Text>
             <TextInput
               style={styles.addAreaInput}
               placeholder="Area name (e.g. Gym, Hallway A)"
@@ -251,8 +272,6 @@ export default function AreaListScreen() {
               value={newAreaName}
               onChangeText={setNewAreaName}
               autoFocus
-              // The form is the last thing on the screen; once the keyboard is up, bring it into view.
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
               returnKeyType="done"
               onSubmitEditing={addArea}
             />
@@ -260,18 +279,13 @@ export default function AreaListScreen() {
               <TouchableOpacity style={styles.addAreaConfirm} onPress={addArea}>
                 <Text style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>Add</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.addAreaCancel} onPress={() => { setAddingArea(false); setNewAreaName(''); }}>
+              <TouchableOpacity style={styles.addAreaCancel} onPress={closeAddArea}>
                 <Text style={{ color: Colors.textSecondary, fontSize: 14 }}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
-        ) : (
-          <TouchableOpacity style={styles.addBtn} onPress={() => setAddingArea(true)}>
-            <Text style={styles.addBtnText}>+ Add area</Text>
-          </TouchableOpacity>
-        ))}
-
-      </KeyboardScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -279,7 +293,7 @@ export default function AreaListScreen() {
 const styles = StyleSheet.create({
   settingsBtn: { width: 50, alignItems: 'flex-end', paddingVertical: 4 },
   container: { flex: 1, backgroundColor: Colors.bgSecondary },
-  scroll: { padding: 20, paddingBottom: 80 },
+  scroll: { padding: 20, paddingBottom: 110 }, // room for the floating add button
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   backBtn: { fontSize: 14, color: Colors.blue },
@@ -319,7 +333,15 @@ const styles = StyleSheet.create({
   areaActionBtnText: { fontSize: 12, color: Colors.blue, fontWeight: '500' },
   emptyState: { backgroundColor: '#fff', borderRadius: 12, padding: 32, alignItems: 'center', borderWidth: 0.5, borderColor: Colors.borderLight, borderStyle: 'dashed', marginBottom: 16 },
   emptyText: { color: Colors.textTertiary, fontSize: 14 },
-  addAreaForm: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 0.5, borderColor: Colors.borderLight, marginBottom: 10 },
+  fab: {
+    position: 'absolute', right: 20, bottom: 24, width: 56, height: 56, borderRadius: 28,
+    backgroundColor: Colors.blue, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 6,
+  },
+  fabText: { color: '#fff', fontSize: 30, lineHeight: 32, fontWeight: '300' },
+  modalOverlay: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.35)' },
+  addAreaTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary, marginBottom: 10 },
+  addAreaForm: { backgroundColor: '#fff', borderRadius: 12, padding: 16, borderWidth: 0.5, borderColor: Colors.borderLight, width: '100%', maxWidth: 480, alignSelf: 'center' },
   addAreaInput: { borderWidth: 0.5, borderColor: Colors.borderLight, borderRadius: 8, padding: 10, fontSize: 14, color: Colors.textPrimary, marginBottom: 10 },
   addAreaBtns: { flexDirection: 'row', gap: 10 },
   addAreaConfirm: { flex: 1, backgroundColor: Colors.blue, borderRadius: 8, padding: 10, alignItems: 'center' },
