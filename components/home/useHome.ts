@@ -59,13 +59,14 @@ export function useHome({ live, initialUser }: Options) {
   const greeting = (hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening') + (firstName ? ', ' + firstName : '');
 
   const activeJobs = jobs.filter(j => j.status !== 'complete');
+  const completedJobs = jobs.filter(j => j.status === 'complete');
   const completedToday = jobs.filter(j => {
     const today = new Date().toDateString();
     return new Date(j.created_at).toDateString() === today;
   }).length;
   const installingCount = jobs.filter(j => j.mode === 'electrician' && j.status !== 'complete').length;
 
-  return { jobs, loading, currentUser, greeting, activeJobs, completedToday, installingCount };
+  return { jobs, loading, currentUser, greeting, activeJobs, completedJobs, completedToday, installingCount };
 }
 
 export function getStatusColor(job: any) {

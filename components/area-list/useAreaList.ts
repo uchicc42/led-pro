@@ -107,7 +107,11 @@ export function useAreaList({ live, initialUser }: Options) {
   async function toggleComplete(area: any) {
     const newStatus = !area.is_complete;
     patchRow('areas', area.id, { is_complete: newStatus });
-    if (!newStatus) return;
+    if (!newStatus) {
+      // An area was reopened, so the job has work left again.
+      if (job?.status === 'complete') patchRow('jobs', jobId, { status: 'active' });
+      return;
+    }
 
     const user = await getCurrentUser();
     queueCall('notifyAreaComplete', area.name, job?.name, user?.id);

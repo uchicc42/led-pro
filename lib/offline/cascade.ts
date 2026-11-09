@@ -1,5 +1,6 @@
 import { deleteRow } from './data';
-import { getSnapshot, putRow } from './store';
+import { deleteLocalPhoto } from './files';
+import { getSnapshot, putRow, removeRow } from './store';
 
 // Deleting a record also removes what hangs off it, on the device and (via the queue) on
 // the server. Children are deleted first, so the server never sees an orphaned reference.
@@ -20,4 +21,18 @@ export function deleteAreaCascade(areaId: string) {
   s.where('area_photos', p => p.area_id === areaId).forEach(p => deleteRow('area_photos', p.id));
   s.where('job_issues', i => i.area_id === areaId).forEach(i => putRow('job_issues', { ...i, area_id: null }));
   deleteRow('areas', areaId);
+}
+
+/** Removes a job the server has already deleted from this device: its rows and any photo files kept here. */
+export function forgetJob(jobId: string) {
+  const s = getSnapshot();
+  const areaIds = new Set(s.where('areas', a => a.job_id === jobId).map(a => a.id));
+  const rowIds = new Set(s.where('light_rows', r => areaIds.has(r.area_id)).map(r => r.id));
+  s.where('install_rows', r => rowIds.has(r.light_row_id)).forEach(r => removeRow('install_rows', r.id));
+  s.where('area_controls', c => areaIds.has(c.area_id)).forEach(c => removeRow('area_controls', c.id));
+  s.where('area_photos', p => areaIds.has(p.area_id)).forEach(p => { deleteLocalPhoto(p._localUri); removeRow('area_photos', p.id); });
+  s.where('job_issues', i => i.job_id === jobId).forEach(i => { deleteLocalPhoto(i._localUri); removeRow('job_issues', i.id); });
+  rowIds.forEach(id => removeRow('light_rows', id));
+  areaIds.forEach(id => removeRow('areas', id));
+  removeRow('jobs', jobId);
 }

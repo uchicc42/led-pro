@@ -11,8 +11,14 @@ export default function JobSettingsScreen() {
     loading, notOnDevice, name, setName, companyName, setCompanyName, location, setLocation, date, setDate,
     installerNotes, setInstallerNotes, mode, setMode,
     columns, saving, error, isReady, detailsDirty, savedFlash,
-    saveDetails, saveAndGoBack, goBack,
+    saveDetails, saveAndGoBack, goBack, isComplete, setJobComplete, canDelete, deleting, deleteJob, deleteError,
   } = useJobSettings();
+
+  function confirmDelete() {
+    if (window.confirm(`Permanently delete "${name}"?\n\nThis removes all of its areas, counts, photos and issues for everyone, and can't be undone.`)) {
+      deleteJob();
+    }
+  }
 
   function handleBack() {
     if (!detailsDirty) return goBack();
@@ -125,6 +131,40 @@ export default function JobSettingsScreen() {
               <div style={webStyles.modeSub}>Track installation</div>
             </div>
           </div>
+
+          <div style={webStyles.divider} />
+
+          <div style={webStyles.sectionLabel}>Job status</div>
+          <div style={webStyles.statusText}>
+            {isComplete
+              ? 'This job is complete and listed under Completed on the dashboard.'
+              : 'This job is active. It completes on its own when every area is marked done.'}
+          </div>
+          <button
+            style={isComplete ? webStyles.reopenBtn : webStyles.completeBtn}
+            onClick={() => setJobComplete(!isComplete)}
+          >
+            {isComplete ? '↺ Reopen job' : '✓ Mark job complete'}
+          </button>
+
+          {canDelete && (
+            <>
+              <div style={webStyles.divider} />
+              <div style={webStyles.sectionLabel}>Delete job</div>
+              <div style={webStyles.statusText}>
+                Permanently removes this job and all of its areas, counts, photos and issues for everyone.
+              </div>
+              <button
+                style={{ ...webStyles.deleteBtn, opacity: deleting ? 0.5 : 1 }}
+                onClick={confirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : '🗑 Delete job'}
+              </button>
+            </>
+          )}
+
+          {deleteError && <div style={webStyles.errorText}>{deleteError}</div>}
         </div>
       </div>
     </div>
@@ -158,5 +198,9 @@ const webStyles: Record<string, CSSProperties> = {
   modeName: { fontSize: 14, fontWeight: '500', color: Colors.textPrimary, marginBottom: 4 },
   modeSub: { fontSize: 11, color: '#aaa' },
   errorText: { color: '#A32D2D', fontSize: 13, marginTop: 12 },
+  statusText: { fontSize: 13, color: Colors.textSecondary, marginBottom: 12 },
+  completeBtn: { width: '100%', padding: '12px', background: Colors.green, color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: '500', cursor: 'pointer' },
+  reopenBtn: { width: '100%', padding: '12px', background: '#fff', color: Colors.blue, border: `1px solid ${Colors.blue}`, borderRadius: 10, fontSize: 15, fontWeight: '500', cursor: 'pointer' },
+  deleteBtn: { width: '100%', padding: '12px', background: '#fff', color: '#A32D2D', border: '1px solid #E24B4A', borderRadius: 10, fontSize: 15, fontWeight: '500', cursor: 'pointer' },
   saveBtn: { width: '100%', padding: '12px', background: Colors.blue, color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: '500', marginTop: 4 },
 };

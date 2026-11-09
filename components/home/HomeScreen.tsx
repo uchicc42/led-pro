@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -13,7 +14,8 @@ import { getAreaProgress, getModeLabel, getStatusColor, getStatusLabel, useHome 
 // Native UI. The web UI lives in HomeScreen.web.tsx; Metro picks the right file per platform.
 
 export default function HomeScreen() {
-  const { jobs, loading, currentUser, greeting, activeJobs, completedToday, installingCount } = useHome({ live: 'realtime' });
+  const { jobs, loading, currentUser, greeting, activeJobs, completedJobs, completedToday, installingCount } = useHome({ live: 'realtime' });
+  const [showCompleted, setShowCompleted] = useState(false);
 
   if (loading) return (
     <View style={styles.center}>
@@ -63,38 +65,12 @@ export default function HomeScreen() {
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No jobs yet — create your first one!</Text>
           </View>
+        ) : activeJobs.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No active jobs — everything is complete.</Text>
+          </View>
         ) : (
-          jobs.map((job) => (
-            <TouchableOpacity
-              key={job.id}
-              style={styles.jobCard}
-              onPress={() => router.push(`/area-list?jobId=${job.id}&role=${currentUser?.role || ''}` as any)}
-            >
-              <View style={[styles.jobAccent, { backgroundColor: getStatusColor(job) }]} />
-              <View style={styles.jobContent}>
-                <View style={styles.jobTop}>
-                  <Text style={styles.jobName}>{job.name}</Text>
-                  <Text style={styles.jobDate}>
-                    {new Date(job.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </Text>
-                </View>
-                <View style={styles.jobMeta}>
-                  <View style={[styles.badge, { backgroundColor: job.mode === 'electrician' ? '#FAECE7' : '#E1F5EE' }]}>
-                    <Text style={[styles.badgeText, { color: job.mode === 'electrician' ? '#712B13' : '#085041' }]}>
-                      {getModeLabel(job)}
-                    </Text>
-                  </View>
-                  <View style={[styles.badge, { backgroundColor: '#E6F1FB' }]}>
-                    <Text style={[styles.badgeText, { color: '#0C447C' }]}>{getStatusLabel(job)}</Text>
-                  </View>
-                  <Text style={styles.areaCount}>{getAreaProgress(job)}</Text>
-                </View>
-                {job.location && (
-                  <Text style={styles.jobLocation}>📍 {job.location}</Text>
-                )}
-              </View>
-            </TouchableOpacity>
-          ))
+          activeJobs.map(jobCard)
         )}
 
         <TouchableOpacity
@@ -103,9 +79,54 @@ export default function HomeScreen() {
         >
           <Text style={styles.newJobText}>+ New job</Text>
         </TouchableOpacity>
+
+        {completedJobs.length > 0 && (
+          <>
+            <TouchableOpacity style={styles.completedHeader} onPress={() => setShowCompleted(!showCompleted)}>
+              <Text style={styles.sectionLabel}>Completed ({completedJobs.length})</Text>
+              <Text style={styles.completedToggle}>{showCompleted ? 'Hide ▲' : 'Show ▼'}</Text>
+            </TouchableOpacity>
+            {showCompleted && completedJobs.map(jobCard)}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
+
+  // One job on the list; used for both the active and completed sections.
+  function jobCard(job: any) {
+    return (
+      <TouchableOpacity
+        key={job.id}
+        style={styles.jobCard}
+        onPress={() => router.push(`/area-list?jobId=${job.id}&role=${currentUser?.role || ''}` as any)}
+      >
+        <View style={[styles.jobAccent, { backgroundColor: getStatusColor(job) }]} />
+        <View style={styles.jobContent}>
+          <View style={styles.jobTop}>
+            <Text style={styles.jobName}>{job.name}</Text>
+            <Text style={styles.jobDate}>
+              {new Date(job.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </Text>
+          </View>
+          <View style={styles.jobMeta}>
+            <View style={[styles.badge, { backgroundColor: job.mode === 'electrician' ? '#FAECE7' : '#E1F5EE' }]}>
+              <Text style={[styles.badgeText, { color: job.mode === 'electrician' ? '#712B13' : '#085041' }]}>
+                {getModeLabel(job)}
+              </Text>
+            </View>
+            <View style={[styles.badge, { backgroundColor: '#E6F1FB' }]}>
+              <Text style={[styles.badgeText, { color: '#0C447C' }]}>{getStatusLabel(job)}</Text>
+            </View>
+            <Text style={styles.areaCount}>{getAreaProgress(job)}</Text>
+          </View>
+          {job.location && (
+            <Text style={styles.jobLocation}>📍 {job.location}</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
@@ -134,6 +155,8 @@ const styles = StyleSheet.create({
   areaCount: { fontSize: 12, color: Colors.textSecondary },
   jobLocation: { fontSize: 12, color: Colors.textTertiary, marginTop: 4 },
   newJobBtn: { backgroundColor: Colors.blue, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 12 },
+  completedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 28, paddingVertical: 4 },
+  completedToggle: { fontSize: 12, color: Colors.blue, marginBottom: 12 },
   newJobText: { color: '#fff', fontSize: 15, fontWeight: '500' },
   switchBtn: { backgroundColor: Colors.bgSecondary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 0.5, borderColor: Colors.borderLight },
   switchBtnText: { fontSize: 12, color: Colors.textSecondary },

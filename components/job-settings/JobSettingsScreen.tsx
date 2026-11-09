@@ -21,8 +21,19 @@ export default function JobSettingsScreen() {
     loading, notOnDevice, name, setName, companyName, setCompanyName, location, setLocation, date, setDate,
     installerNotes, setInstallerNotes, mode, setMode,
     columns, saving, error, isReady, detailsDirty, savedFlash,
-    saveDetails, saveAndGoBack, goBack,
+    saveDetails, saveAndGoBack, goBack, isComplete, setJobComplete, canDelete, deleting, deleteJob, deleteError,
   } = useJobSettings();
+
+  function confirmDelete() {
+    Alert.alert(
+      'Delete job',
+      `Permanently delete "${name}"? This removes all of its areas, counts, photos and issues for everyone, and can't be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete job', style: 'destructive', onPress: deleteJob },
+      ],
+    );
+  }
 
   function handleBack() {
     if (!detailsDirty) return goBack();
@@ -157,6 +168,42 @@ export default function JobSettingsScreen() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.divider} />
+
+        <Text style={styles.sectionLabel}>Job status</Text>
+        <Text style={styles.statusText}>
+          {isComplete
+            ? 'This job is complete and listed under Completed on the home screen.'
+            : 'This job is active. It completes on its own when every area is marked done.'}
+        </Text>
+        <TouchableOpacity
+          style={[styles.statusBtn, isComplete && styles.statusBtnReopen]}
+          onPress={() => setJobComplete(!isComplete)}
+        >
+          <Text style={[styles.statusBtnText, isComplete && { color: Colors.blue }]}>
+            {isComplete ? '↺ Reopen job' : '✓ Mark job complete'}
+          </Text>
+        </TouchableOpacity>
+
+        {canDelete && (
+          <>
+            <View style={styles.divider} />
+            <Text style={styles.sectionLabel}>Delete job</Text>
+            <Text style={styles.statusText}>
+              Permanently removes this job and all of its areas, counts, photos and issues for everyone.
+            </Text>
+            <TouchableOpacity
+              style={[styles.deleteBtn, deleting && { opacity: 0.5 }]}
+              onPress={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? <ActivityIndicator color="#A32D2D" /> : <Text style={styles.deleteBtnText}>🗑 Delete job</Text>}
+            </TouchableOpacity>
+          </>
+        )}
+
+        {deleteError ? <Text style={styles.errorText}>{deleteError}</Text> : null}
+
       </KeyboardScrollView>
     </SafeAreaView>
   );
@@ -187,6 +234,12 @@ const styles = StyleSheet.create({
   modeName: { fontSize: 13, fontWeight: '500', color: Colors.textPrimary },
   modeSub: { fontSize: 11, color: Colors.textTertiary, marginTop: 2, textAlign: 'center' },
   errorText: { color: '#A32D2D', fontSize: 13, marginTop: 12 },
+  statusText: { fontSize: 13, color: Colors.textSecondary, marginBottom: 12 },
+  statusBtn: { backgroundColor: Colors.green, borderRadius: 12, padding: 14, alignItems: 'center' },
+  statusBtnReopen: { backgroundColor: '#fff', borderWidth: 1, borderColor: Colors.blue },
+  statusBtnText: { color: '#fff', fontSize: 15, fontWeight: '500' },
+  deleteBtn: { backgroundColor: '#fff', borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: '#E24B4A' },
+  deleteBtnText: { color: '#A32D2D', fontSize: 15, fontWeight: '500' },
   saveBtn: { backgroundColor: Colors.blue, borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 14 },
   saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '500' },
 });

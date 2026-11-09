@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { getAreaProgress, getModeLabel, getStatusColor, getStatusLabel, useHome } from './useHome';
@@ -16,8 +16,9 @@ function readStoredSession() {
 }
 
 export default function HomeScreen() {
-  const { jobs, loading, currentUser, greeting, activeJobs, completedToday, installingCount } =
+  const { jobs, loading, currentUser, greeting, activeJobs, completedJobs, completedToday, installingCount } =
     useHome({ live: 'poll', initialUser: readStoredSession });
+  const [showCompleted, setShowCompleted] = useState(false);
 
   if (loading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -75,46 +76,63 @@ export default function HomeScreen() {
           <div style={webStyles.emptyState}>
             No jobs yet — create your first one!
           </div>
-        ) : (
-          <div style={webStyles.jobsGrid}>
-            {jobs.map((job) => (
-              <div
-                key={job.id}
-                style={webStyles.jobCard}
-                onClick={() => router.push(`/area-list?jobId=${job.id}&role=${currentUser?.role || ''}` as any)}
-              >
-                <div style={{ ...webStyles.jobAccent, background: getStatusColor(job) }} />
-                <div style={webStyles.jobCardContent}>
-                  <div style={webStyles.jobTop}>
-                    <div style={webStyles.jobName}>{job.name}</div>
-                    <div style={webStyles.jobDate}>
-                      {new Date(job.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </div>
-                  </div>
-                  <div style={webStyles.jobMeta}>
-                    <span style={{
-                      ...webStyles.badge,
-                      background: job.mode === 'electrician' ? '#FAECE7' : '#E1F5EE',
-                      color: job.mode === 'electrician' ? '#712B13' : '#085041',
-                    }}>
-                      {getModeLabel(job)}
-                    </span>
-                    <span style={{ ...webStyles.badge, background: '#E6F1FB', color: '#0C447C' }}>
-                      {getStatusLabel(job)}
-                    </span>
-                    <span style={webStyles.areaCount}>{getAreaProgress(job)}</span>
-                  </div>
-                  {job.location && (
-                    <div style={webStyles.jobLocation}>📍 {job.location}</div>
-                  )}
-                </div>
-              </div>
-            ))}
+        ) : activeJobs.length === 0 ? (
+          <div style={webStyles.emptyState}>
+            No active jobs — everything is complete.
           </div>
+        ) : (
+          <div style={webStyles.jobsGrid}>{activeJobs.map(jobCard)}</div>
+        )}
+
+        {completedJobs.length > 0 && (
+          <>
+            <div style={webStyles.completedHeader} onClick={() => setShowCompleted(!showCompleted)}>
+              <span>Completed ({completedJobs.length})</span>
+              <span style={webStyles.completedToggle}>{showCompleted ? 'Hide ▲' : 'Show ▼'}</span>
+            </div>
+            {showCompleted && <div style={webStyles.jobsGrid}>{completedJobs.map(jobCard)}</div>}
+          </>
         )}
       </div>
     </div>
   );
+
+  // One job on the list; used for both the active and completed sections.
+  function jobCard(job: any) {
+    return (
+      <div
+        key={job.id}
+        style={webStyles.jobCard}
+        onClick={() => router.push(`/area-list?jobId=${job.id}&role=${currentUser?.role || ''}` as any)}
+      >
+        <div style={{ ...webStyles.jobAccent, background: getStatusColor(job) }} />
+        <div style={webStyles.jobCardContent}>
+          <div style={webStyles.jobTop}>
+            <div style={webStyles.jobName}>{job.name}</div>
+            <div style={webStyles.jobDate}>
+              {new Date(job.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </div>
+          </div>
+          <div style={webStyles.jobMeta}>
+            <span style={{
+              ...webStyles.badge,
+              background: job.mode === 'electrician' ? '#FAECE7' : '#E1F5EE',
+              color: job.mode === 'electrician' ? '#712B13' : '#085041',
+            }}>
+              {getModeLabel(job)}
+            </span>
+            <span style={{ ...webStyles.badge, background: '#E6F1FB', color: '#0C447C' }}>
+              {getStatusLabel(job)}
+            </span>
+            <span style={webStyles.areaCount}>{getAreaProgress(job)}</span>
+          </div>
+          {job.location && (
+            <div style={webStyles.jobLocation}>📍 {job.location}</div>
+          )}
+        </div>
+      </div>
+    );
+  }
 }
 
 const webStyles: Record<string, CSSProperties> = {
@@ -131,6 +149,8 @@ const webStyles: Record<string, CSSProperties> = {
   sectionLabel: { fontSize: 11, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 },
   emptyState: { background: '#fff', borderRadius: 14, padding: 40, textAlign: 'center', color: Colors.textTertiary, border: '0.5px dashed #e0e7ef' },
   jobsGrid: { display: 'flex', flexDirection: 'column', gap: 10 },
+  completedHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32, marginBottom: 14, fontSize: 11, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', userSelect: 'none' },
+  completedToggle: { fontSize: 12, color: Colors.blue, textTransform: 'none', letterSpacing: 0 },
   jobCard: { background: '#fff', borderRadius: 14, border: '0.5px solid #e0e7ef', display: 'flex', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', cursor: 'pointer' },
   jobAccent: { width: 5, flexShrink: 0 },
   jobCardContent: { flex: 1, padding: '16px 20px' },

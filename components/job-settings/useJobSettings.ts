@@ -3,9 +3,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { getCurrentUser } from '../../constants/userStore';
 import { LAYOUT_CANVAS_ENABLED } from '../../constants/features';
 import { useOnline } from '../../lib/offline/connectivity';
+import { forgetJob } from '../../lib/offline/cascade';
 import { patchRow, queueCall } from '../../lib/offline/data';
+import { flushOutbox } from '../../lib/offline/outbox';
 import { useStore } from '../../lib/offline/store';
 import { trackJob } from '../../lib/offline/sync';
+import { supabase } from '../../supabase';
+import { PHOTO_BUCKET } from '../area-photos/pickPhotos';
 
 type Mode = 'counting' | 'electrician';
 type FeatureField = 'col_sensor' | 'col_photocell' | 'col_layout' | 'col_hours';
@@ -34,6 +38,16 @@ export function useJobSettings() {
   const [savedCount, setSavedCount] = useState(0);
   const savedFlash = savedCount > 0;
   const [detailsFor, setDetailsFor] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  useEffect(() => {
+    getCurrentUser().then(user => setRole(user?.role ?? null));
+  }, []);
+  // The server checks this too; here it only decides whether to show the button.
+  const canDelete = role === 'owner' || role === 'partner';
+  const isComplete = job?.status === 'complete';
 
   // Switches and mode show the saved values directly.
   const mode: Mode = job?.mode === 'electrician' ? 'electrician' : 'counting';
@@ -102,6 +116,41 @@ export function useJobSettings() {
     log(`Mode changed to ${value} for ${savedDetails.name}`);
   }
 
+  // Jobs also complete on their own when every area is marked done.
+  function setJobComplete(complete: boolean) {
+    setError('');
+    patchRow('jobs', jobId, { status: complete ? 'complete' : 'active' });
+    flashSaved();
+    log(`${savedDetails.name} marked ${complete ? 'complete' : 'active again'}`);
+  }
+
+  /** Permanently deletes the job and everything in it, for everyone. Needs a connection. */
+  async function deleteJob() {
+    if (!online) {
+      setDeleteError('Deleting a job needs a connection. Try again when you have signal.');
+      return;
+    }
+    setDeleting(true);
+    setDeleteError('');
+    // Upload this phone's waiting changes first, so none are left pointing at the deleted job.
+    await flushOutbox();
+    const { data: photoPaths, error: rpcError } = await supabase.rpc('delete_job', { p_job_id: jobId });
+    if (rpcError) {
+      setDeleting(false);
+      setDeleteError(rpcError.code === '42501'
+        ? 'Only owners and partners can delete jobs.'
+        : 'The job could not be deleted. Check your connection and try again.');
+      return;
+    }
+    const paths = (photoPaths ?? []) as string[];
+    if (paths.length > 0) {
+      supabase.storage.from(PHOTO_BUCKET).remove(paths)
+        .then(({ error: e }) => { if (e) console.log('Photo cleanup error:', e); });
+    }
+    forgetJob(jobId);
+    router.replace('/home');
+  }
+
   const isReady = !!(name.trim() && location.trim() && date);
   const detailsDirty =
     name.trim() !== savedDetails.name ||
@@ -152,6 +201,6 @@ export function useJobSettings() {
     loading, notOnDevice, name, setName, companyName, setCompanyName, location, setLocation, date, setDate,
     installerNotes, setInstallerNotes, mode, setMode,
     columns, saving, error, isReady, detailsDirty, savedFlash,
-    saveDetails, saveAndGoBack, goBack,
+    saveDetails, saveAndGoBack, goBack, isComplete, setJobComplete, canDelete, deleting, deleteJob, deleteError,
   };
 }
