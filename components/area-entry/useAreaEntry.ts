@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getCurrentUser } from '../../constants/userStore';
 import { useOnline } from '../../lib/offline/connectivity';
@@ -8,6 +8,7 @@ import { Row, StoreSnapshot, getSnapshot, useStore } from '../../lib/offline/sto
 import { trackJob } from '../../lib/offline/sync';
 import { byName } from '../../lib/byName';
 import { productCodes } from '../../lib/productCodes';
+import { useAreaForm } from '../area-list/useAreaForm';
 import { CONTROL_KINDS, CONTROL_LABEL, ControlKind, enabledControlKinds } from '../../lib/controlKinds';
 
 export const LUMEN_OPTIONS = ['L', 'M', 'H', '3500K', '4000K', '5000K'];
@@ -115,6 +116,9 @@ export function useAreaEntry() {
   const nextKey = () => `c${keyCounter.current++}`;
 
   const area = store.get('areas', areaId) ?? null;
+  // The area this room is inside, if it's a room.
+  const parentArea = area?.parent_area_id ? store.get('areas', area.parent_area_id) ?? null : null;
+  const areaFormState = useAreaForm(jobId);
   const job = store.get('jobs', jobId) ?? null;
 
   useFocusEffect(
@@ -165,13 +169,14 @@ export function useAreaEntry() {
     return null;
   }
 
-  async function save(markComplete = false) {
+  /** Saves the form; false when something needs fixing first. */
+  async function save(markComplete = false): Promise<boolean> {
     const missingIndex = rows.findIndex(r => missingMount(r));
     if (missingIndex >= 0) {
       setSaveError(`Row ${missingIndex + 1}: choose a mount type for ${missingMount(rows[missingIndex])}.`);
-      return;
+      return false;
     }
-    if (!area) return;
+    if (!area) return false;
     setSaving(true);
     setSaveError('');
     const current = getSnapshot();
@@ -218,6 +223,20 @@ export function useAreaEntry() {
 
     setDirty(false);
     setSaving(false);
+    return true;
+  }
+
+  // Duplicate copies what's saved, so unsaved changes are saved first.
+  async function startDuplicate() {
+    if (!area) return;
+    if (dirty && !(await save())) return;
+    areaFormState.openDuplicate(area as any);
+  }
+
+  // After duplicating, open the copy so its counts can be adjusted.
+  async function submitDuplicate() {
+    const result = await areaFormState.submitAreaForm();
+    if (result) router.replace(`/area-entry?areaId=${result.id}&jobId=${jobId}` as any);
   }
 
   // Saves sensors/photocells/dimmers for the enabled kinds; returns form state with their ids.
@@ -355,6 +374,7 @@ export function useAreaEntry() {
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
     describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor, codeFor,
+    parentArea, startDuplicate, submitDuplicate, areaFormState,
   };
 }
 

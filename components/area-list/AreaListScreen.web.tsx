@@ -3,6 +3,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { NotOnDevice } from '../ui/not-on-device';
+import AreaFormModal from './AreaFormModal';
 import ReorderList from './ReorderList';
 import { useAreaList } from './useAreaList';
 
@@ -21,13 +22,123 @@ function readStoredSession() {
 
 export default function AreaListScreen() {
   const {
-    jobId, job, loading, notOnDevice, addingArea, setAddingArea, newAreaName, setNewAreaName,
-    filter, setFilter, jobNotes, notesSaved, saveJobNotes, addArea, toggleComplete, deleteArea,
-    getFilteredAreas, completed, total, progress, openIssues, reordering, setReordering, moveArea,
+    jobId, job, loading, notOnDevice, filter, setFilter, jobNotes, notesSaved, saveJobNotes, toggleComplete, deleteArea,
+    getFilteredGroups, groups, expanded, toggleExpanded, completed, total, progress, openIssues, reordering, setReordering, moveArea,
+    areaForm, parentOptions, openAddArea, openDuplicate, setFormName, setFormParent, closeAreaForm, submitAreaForm,
   } = useAreaList({ live: 'poll', initialUser: readStoredSession });
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const isElectrician = readStoredSession()?.role === 'electrician';
-  const closeAddArea = () => { setAddingArea(false); setNewAreaName(''); };
+  const filteredGroups = getFilteredGroups();
+
+  function confirmDelete(area: any, roomCount: number) {
+    const message = roomCount > 0
+      ? `Delete "${area.name}" and the ${roomCount} room${roomCount === 1 ? '' : 's'} inside it?\n\nThis also removes all their light rows.`
+      : `Delete "${area.name}"?\n\nThis also removes all its light rows.`;
+    if (window.confirm(message)) deleteArea(area);
+  }
+
+  // One area or room on the list.
+  function areaCard(area: any, opts: { isRoom: boolean; rooms?: any[]; roomsShown?: boolean }) {
+    const rooms = opts.rooms ?? [];
+    const roomsDone = rooms.filter(r => r.is_complete).length;
+    return (
+      <div key={area.id} style={{
+        ...webStyles.areaCard,
+        ...(opts.isRoom ? webStyles.roomCard : {}),
+        borderLeft: `4px solid ${area.is_complete ? Colors.green : Colors.blue}`,
+      }}>
+        <div style={webStyles.areaCardContent}>
+          <div style={webStyles.areaTop}>
+            <div style={webStyles.areaName}>{opts.isRoom ? '› ' : ''}{area.name}</div>
+            <div style={webStyles.areaActions}>
+              {area.entered_by && (
+                <div style={{
+                  ...webStyles.nameTag,
+                  background: area.entered_by.color + '22',
+                  color: area.entered_by.color,
+                }}>
+                  {area.entered_by.initials}
+                </div>
+              )}
+              <button
+                style={{
+                  ...webStyles.completeBtn,
+                  background: area.is_complete ? Colors.green : '#fff',
+                  color: area.is_complete ? '#fff' : Colors.textTertiary,
+                  border: `1px solid ${area.is_complete ? Colors.green : '#e0e7ef'}`,
+                }}
+                onClick={() => toggleComplete(area)}
+              >
+                {area.is_complete ? '✓ Complete' : 'Mark done'}
+              </button>
+              <button
+                style={webStyles.editBtn}
+                onClick={() => router.push(`/area-entry?areaId=${area.id}&jobId=${jobId}`)}
+              >
+                Edit →
+              </button>
+              <button
+                style={{...webStyles.editBtn, background: '#FAECE7', color: '#712B13', borderColor: '#D08A6E'}}
+                onClick={() => router.push(`/electrician?areaId=${area.id}&jobId=${jobId}`)}
+              >
+                ⚡ Electrician
+              </button>
+              {!isElectrician && (
+                <button style={webStyles.editBtn} onClick={() => openDuplicate(area)} title="Make a copy with the same lights">
+                  ⧉ Duplicate
+                </button>
+              )}
+              {!isElectrician && (
+                <div style={{ position: 'relative' }}>
+                  <button
+                    style={{ ...webStyles.editBtn, fontSize: 16, padding: '4px 10px', fontWeight: '700' }}
+                    onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === area.id ? null : area.id); }}
+                  >
+                    ···
+                  </button>
+                  {menuOpen === area.id && (
+                    <div style={webStyles.dropdownMenu} onClick={e => e.stopPropagation()}>
+                      {!opts.isRoom && (
+                        <div
+                          style={{ ...webStyles.dropdownItem, color: Colors.blue }}
+                          onClick={() => { openAddArea(area.id); setMenuOpen(null); }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#E6F1FB'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+                        >
+                          ＋ Add room inside
+                        </div>
+                      )}
+                      <div
+                        style={webStyles.dropdownItem}
+                        onClick={() => { setMenuOpen(null); confirmDelete(area, rooms.length); }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#FCEBEB'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+                      >
+                        🗑 Delete area
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={webStyles.areaMeta}>
+            <span style={webStyles.areaCount}>
+              {area.light_rows?.length || 0} light rows
+            </span>
+            {area.entered_by && (
+              <span style={webStyles.enteredBy}>Added by {area.entered_by.name}</span>
+            )}
+            {rooms.length > 0 && (
+              <button style={webStyles.roomsToggle} onClick={() => toggleExpanded(area.id)}>
+                {opts.roomsShown ? '▾' : '▸'} {rooms.length} room{rooms.length === 1 ? '' : 's'} · {roomsDone} done
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     const handler = () => setMenuOpen(null);
@@ -105,87 +216,38 @@ export default function AreaListScreen() {
           )}
         </div>
 
-        {reordering && <ReorderList areas={getFilteredAreas()} onMove={moveArea} />}
+        {reordering && (
+          <>
+            <ReorderList areas={groups.map(g => g.area)} onMove={(from, to) => moveArea(null, from, to)} />
+            {/* Rooms are ordered within their area. */}
+            {groups.filter(g => g.rooms.length > 1).map(g => (
+              <div key={g.area.id}>
+                <div style={webStyles.reorderGroupLabel}>Rooms in {g.area.name}</div>
+                <ReorderList areas={g.rooms} onMove={(from, to) => moveArea(g.area.id, from, to)} />
+              </div>
+            ))}
+          </>
+        )}
 
         <div style={{ ...webStyles.areaList, ...(reordering ? { display: 'none' } : {}) }}>
-          {getFilteredAreas().map(area => (
-            <div key={area.id} style={{
-              ...webStyles.areaCard,
-              borderLeft: `4px solid ${area.is_complete ? Colors.green : Colors.blue}`,
-            }}>
-              <div style={webStyles.areaCardContent}>
-                <div style={webStyles.areaTop}>
-                  <div style={webStyles.areaName}>{area.name}</div>
-                  <div style={webStyles.areaActions}>
-                    {area.entered_by && (
-                      <div style={{
-                        ...webStyles.nameTag,
-                        background: area.entered_by.color + '22',
-                        color: area.entered_by.color,
-                      }}>
-                        {area.entered_by.initials}
-                      </div>
-                    )}
-                    <button
-                      style={{
-                        ...webStyles.completeBtn,
-                        background: area.is_complete ? Colors.green : '#fff',
-                        color: area.is_complete ? '#fff' : Colors.textTertiary,
-                        border: `1px solid ${area.is_complete ? Colors.green : '#e0e7ef'}`,
-                      }}
-                      onClick={() => toggleComplete(area)}
-                    >
-                      {area.is_complete ? '✓ Complete' : 'Mark done'}
-                    </button>
-                    <button
-                      style={webStyles.editBtn}
-                      onClick={() => router.push(`/area-entry?areaId=${area.id}&jobId=${jobId}`)}
-                    >
-                      Edit →
-                    </button>
-                    <button
-                      style={{...webStyles.editBtn, background: '#FAECE7', color: '#712B13', borderColor: '#D08A6E'}}
-                      onClick={() => router.push(`/electrician?areaId=${area.id}&jobId=${jobId}`)}
-                    >
-                      ⚡ Electrician
-                    </button>
-                    {!isElectrician && (
-                      <div style={{ position: 'relative' }}>
-                        <button
-                          style={{ ...webStyles.editBtn, fontSize: 16, padding: '4px 10px', fontWeight: '700' }}
-                          onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === area.id ? null : area.id); }}
-                        >
-                          ···
-                        </button>
-                        {menuOpen === area.id && (
-                          <div style={webStyles.dropdownMenu} onClick={e => e.stopPropagation()}>
-                            <div
-                              style={webStyles.dropdownItem}
-                              onClick={() => { deleteArea(area); setMenuOpen(null); }}
-                              onMouseEnter={e => { e.currentTarget.style.background = '#FCEBEB'; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
-                            >
-                              🗑 Delete area
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div style={webStyles.areaMeta}>
-                  <span style={webStyles.areaCount}>
-                    {area.light_rows?.length || 0} light rows
-                  </span>
-                  {area.entered_by && (
-                    <span style={webStyles.enteredBy}>Added by {area.entered_by.name}</span>
-                  )}
-                </div>
+          {filteredGroups.map(g => {
+            // While filtering, matching rooms show without opening their area.
+            const roomsShown = g.rooms.length > 0 && (expanded.has(g.area.id) || filter !== 'all');
+            const allRooms = groups.find(x => x.area.id === g.area.id)?.rooms ?? g.rooms;
+            return (
+              <div key={g.area.id} style={webStyles.areaGroup}>
+                {areaCard(g.area, { isRoom: false, rooms: allRooms, roomsShown })}
+                {roomsShown && g.rooms.map(r => areaCard(r, { isRoom: true }))}
+                {roomsShown && !isElectrician && (
+                  <button style={webStyles.addRoomBtn} onClick={() => openAddArea(g.area.id)}>
+                    + Add room to {g.area.name}
+                  </button>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
 
-          {getFilteredAreas().length === 0 && (
+          {filteredGroups.length === 0 && (
             <div style={webStyles.emptyState}>
               {filter === 'all' ? 'No areas yet — add your first one below!' : `No ${filter} areas.`}
             </div>
@@ -239,7 +301,7 @@ export default function AreaListScreen() {
           >
             🕐 Change log
           </button>
-          <button style={webStyles.addBtn} onClick={() => setAddingArea(true)}>
+          <button style={webStyles.addBtn} onClick={() => openAddArea()}>
             + Add area
           </button>
         </>
@@ -248,28 +310,17 @@ export default function AreaListScreen() {
 
       {/* Floating add button: stays in the corner while the page scrolls. */}
       {!isElectrician && !reordering && (
-        <button style={webStyles.fab} onClick={() => setAddingArea(true)} aria-label="Add area" title="Add area">+</button>
+        <button style={webStyles.fab} onClick={() => openAddArea()} aria-label="Add area" title="Add area">+</button>
       )}
 
-      {addingArea && (
-        <div style={webStyles.modalOverlay} onClick={closeAddArea}>
-          <div style={webStyles.addAreaForm} onClick={e => e.stopPropagation()}>
-            <div style={webStyles.addAreaTitle}>New area</div>
-            <input
-              autoFocus
-              style={webStyles.addAreaInput}
-              placeholder="Area name (e.g. Gym, Hallway A)"
-              value={newAreaName}
-              onChange={e => setNewAreaName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') addArea(); if (e.key === 'Escape') closeAddArea(); }}
-            />
-            <div style={webStyles.addAreaBtns}>
-              <button style={webStyles.addAreaCancel} onClick={closeAddArea}>Cancel</button>
-              <button style={webStyles.addAreaConfirm} onClick={addArea}>Add</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AreaFormModal
+        form={areaForm}
+        parentOptions={parentOptions}
+        setName={setFormName}
+        setParent={setFormParent}
+        onSubmit={submitAreaForm}
+        onClose={closeAreaForm}
+      />
     </div>
   );
 }
@@ -294,7 +345,7 @@ const webStyles: Record<string, CSSProperties> = {
   filterPill: { padding: '5px 14px', borderRadius: 20, borderWidth: 0.5, borderStyle: 'solid', borderColor: '#e0e7ef', background: '#fff', fontSize: 12, color: Colors.textSecondary, cursor: 'pointer' },
   filterPillActive: { background: '#E6F1FB', color: '#0C447C', borderColor: Colors.blue },
   areaList: { display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 },
-  areaCard: { background: '#fff', borderRadius: 12, border: '0.5px solid #e0e7ef', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' },
+  areaCard: { background: '#fff', borderRadius: 12, border: '0.5px solid #e0e7ef', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' },
   areaCardContent: { padding: '14px 18px' },
   areaTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   areaName: { fontSize: 15, fontWeight: '500', color: Colors.textPrimary },
@@ -311,13 +362,11 @@ const webStyles: Record<string, CSSProperties> = {
     background: Colors.blue, color: '#fff', fontSize: 30, lineHeight: '58px', cursor: 'pointer',
     boxShadow: '0 4px 14px rgba(0,0,0,0.25)', zIndex: 50,
   },
-  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 100 },
-  addAreaForm: { background: '#fff', borderRadius: 12, padding: 20, width: '100%', maxWidth: 440, boxShadow: '0 8px 30px rgba(0,0,0,0.2)' },
-  addAreaTitle: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary, marginBottom: 12 },
-  addAreaBtns: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 },
-  addAreaInput: { width: '100%', boxSizing: 'border-box', padding: '10px 14px', fontSize: 14, border: '0.5px solid #e0e7ef', borderRadius: 10, outline: 'none', fontFamily: 'inherit' },
-  addAreaConfirm: { padding: '10px 20px', background: Colors.blue, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, cursor: 'pointer', fontWeight: '500' },
-  addAreaCancel: { padding: '10px 16px', background: '#fff', color: Colors.textSecondary, border: '0.5px solid #e0e7ef', borderRadius: 10, fontSize: 14, cursor: 'pointer' },
+  areaGroup: { display: 'flex', flexDirection: 'column', gap: 10 },
+  roomCard: { marginLeft: 28 },
+  roomsToggle: { marginLeft: 'auto', padding: '3px 12px', borderRadius: 12, border: 'none', background: '#E6F1FB', color: '#0C447C', fontSize: 12, fontWeight: '500', cursor: 'pointer' },
+  addRoomBtn: { marginLeft: 28, padding: '9px', background: 'transparent', border: '1px dashed #c0cfe0', borderRadius: 10, fontSize: 13, color: Colors.blue, cursor: 'pointer' },
+  reorderGroupLabel: { fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '18px 0 8px' },
   addBtn: { width: '100%', padding: '12px', background: 'transparent', border: '1px dashed #c0cfe0', borderRadius: 10, fontSize: 14, color: Colors.blue, cursor: 'pointer', textAlign: 'center' },
   dropdownMenu: { position: 'absolute', right: 0, top: '110%', background: '#fff', border: '0.5px solid #e0e7ef', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 100, minWidth: 160, overflow: 'hidden' },
   dropdownItem: { padding: '10px 16px', fontSize: 13, color: '#A32D2D', cursor: 'pointer', background: '#fff' },

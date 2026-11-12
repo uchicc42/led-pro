@@ -1,7 +1,7 @@
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { NO_TYPE_COLOR, colorMap, ensureLightTypeColors, tintOf } from '../../constants/lightTypeColors';
-import { byAreaOrder } from '../../lib/areaOrder';
+import { inTreeOrder } from '../../lib/areaTree';
 import { productCodes } from '../../lib/productCodes';
 import { supabase } from '../../supabase';
 import { FixtureTotal, SUMMARY_CSS, escapeHtml, fixtureTotals, summaryBodyHTML } from '../job-summary/summary';
@@ -36,7 +36,8 @@ export function useScopeExport() {
       .from('areas')
       .select(`*, light_rows(*), area_controls(*)`)
       .eq('job_id', jobId);
-    if (areaData) setAreas(areaData.sort(byAreaOrder));
+    // Rooms follow their area and are named "Suite 220 › Office A".
+    if (areaData) setAreas(inTreeOrder(areaData).map(a => ({ ...a, name: a.displayName })));
 
     const { data: types } = await supabase.from('light_types').select('id, name, category, color, product_code, sort_order, supplier');
     if (types) {

@@ -5,6 +5,7 @@ import { Colors } from '../../constants/Colors';
 import { LAYOUT_CANVAS_ENABLED } from '../../constants/features';
 import { NotOnDevice } from '../ui/not-on-device';
 import AreaPhotos from '../area-photos/AreaPhotos';
+import AreaFormModal from '../area-list/AreaFormModal';
 import { controlsHeading } from '../../lib/controlKinds';
 import { CONTROL_LABEL, ControlKind, LUMEN_OPTIONS, PickerTarget, useAreaEntry } from './useAreaEntry';
 
@@ -108,6 +109,7 @@ export default function AreaEntryScreen() {
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
     describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor, codeFor,
+    parentArea, startDuplicate, submitDuplicate, areaFormState,
   } = useAreaEntry();
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const picker = pickerTarget ? describePicker(pickerTarget) : null;
@@ -122,6 +124,14 @@ export default function AreaEntryScreen() {
 
   return (
     <div style={webStyles.page}>
+      <AreaFormModal
+        form={areaFormState.areaForm}
+        parentOptions={areaFormState.parentOptions}
+        setName={areaFormState.setFormName}
+        setParent={areaFormState.setFormParent}
+        onSubmit={submitDuplicate}
+        onClose={areaFormState.closeAreaForm}
+      />
       {picker && (
         <WebTypePickerModal
           title={picker.title}
@@ -138,7 +148,7 @@ export default function AreaEntryScreen() {
           </button>
           <div>
             <div style={webStyles.headerTitle}>{area?.name}</div>
-            <div style={webStyles.headerSub}>{job?.name}</div>
+            <div style={webStyles.headerSub}>{job?.name}{parentArea ? ` › ${parentArea.name}` : ''}</div>
           </div>
         </div>
 
@@ -376,6 +386,9 @@ export default function AreaEntryScreen() {
               {isComplete ? '✓ Area complete' : 'Mark as complete'}
             </button>
           </div>
+          <button style={webStyles.duplicateBtn} onClick={startDuplicate} disabled={saving}>
+            ⧉ Duplicate this area
+          </button>
         </div>
       </div>
     </div>
@@ -420,6 +433,7 @@ const webStyles: Record<string, CSSProperties> = {
   codeText: { fontSize: 11, color: Colors.textTertiary, marginTop: 2 },
   saveError: { color: '#A32D2D', fontSize: 13, marginTop: 16 },
   actionRow: { display: 'flex', gap: 10, marginTop: 20 },
+  duplicateBtn: { width: '100%', marginTop: 10, padding: '11px', background: 'transparent', border: '1px dashed #c0cfe0', borderRadius: 10, fontSize: 14, color: Colors.blue, cursor: 'pointer' },
   saveBtn: { flex: 1, padding: '13px', background: Colors.blue, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: '500', cursor: 'pointer' },
   doneBtn: { flex: 1, padding: '13px', background: '#fff', color: Colors.teal, border: `1px solid ${Colors.green}`, borderRadius: 10, fontSize: 14, cursor: 'pointer' },
   doneBtnActive: { background: '#E1F5EE', color: Colors.green },

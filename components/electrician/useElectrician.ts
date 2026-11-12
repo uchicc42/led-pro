@@ -25,6 +25,8 @@ export function useElectrician() {
   const [savedFlash, setSavedFlash] = useState(false);
 
   const area = store.get('areas', areaId) ?? null;
+  // The area this room is inside, if it's a room.
+  const parentArea = area?.parent_area_id ? store.get('areas', area.parent_area_id) ?? null : null;
   const job = store.get('jobs', jobId) ?? null;
   const lightRows = store.where('light_rows', r => r.area_id === areaId)
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
@@ -78,6 +80,7 @@ export function useElectrician() {
   function getInstallRow(lightRowId: string) {
     const saved = savedInstall(lightRowId);
     return {
+    parentArea,
       status: saved?.status ?? 'pending',
       removed: saved?.removed ?? false,
       removal_note: saved?.removal_note ?? '',
@@ -129,6 +132,7 @@ export function useElectrician() {
   const notOnDevice = store.loaded && !area && !isOnlineStatus;
 
   return {
+    parentArea,
     areaId, jobId, area, job, lightRows, codes, notes, setNotes, needsFollowUp, setNeedsFollowUp,
     loading, notOnDevice, saving, savedFlash, isOnlineStatus, getInstallRow, updateInstallRow, save,
     getRowControls, areaLevelControls, getControlStatus, updateControlStatus, enabledKinds,

@@ -18,6 +18,7 @@ import { LAYOUT_CANVAS_ENABLED } from '../../constants/features';
 import { NotOnDevice } from '../ui/not-on-device';
 import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import AreaPhotos from '../area-photos/AreaPhotos';
+import AreaFormModal from '../area-list/AreaFormModal';
 import { controlsHeading } from '../../lib/controlKinds';
 import { AreaControl, CONTROL_LABEL, ControlKind, PickerTarget, useAreaEntry } from './useAreaEntry';
 
@@ -135,6 +136,7 @@ export default function AreaEntryScreen() {
     save, addRow, removeRow, updateRow, updateRowControl,
     enabledKinds, visibleAreaControls, addAreaControl, updateAreaControl, removeAreaControl,
     describePicker, backToAreaList, layoutCanvasHref, mountOptionsFor, colorFor, codeFor,
+    parentArea, startDuplicate, submitDuplicate, areaFormState,
   } = useAreaEntry();
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const picker = pickerTarget ? describePicker(pickerTarget) : null;
@@ -163,7 +165,10 @@ export default function AreaEntryScreen() {
           <TouchableOpacity onPress={() => router.push(backToAreaList as any)}>
             <Text style={styles.backBtn}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>{area?.name}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle} numberOfLines={1}>{area?.name}</Text>
+            {parentArea && <Text style={styles.headerParent} numberOfLines={1}>in {parentArea.name}</Text>}
+          </View>
           <View style={{ width: 50 }} />
         </View>
 
@@ -387,7 +392,20 @@ export default function AreaEntryScreen() {
           </Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.duplicateBtn} onPress={startDuplicate} disabled={saving}>
+          <Text style={styles.duplicateBtnText}>⧉ Duplicate this area</Text>
+        </TouchableOpacity>
+
       </KeyboardScrollView>
+
+      <AreaFormModal
+        form={areaFormState.areaForm}
+        parentOptions={areaFormState.parentOptions}
+        setName={areaFormState.setFormName}
+        setParent={areaFormState.setFormParent}
+        onSubmit={submitDuplicate}
+        onClose={areaFormState.closeAreaForm}
+      />
     </SafeAreaView>
   );
 }
@@ -445,6 +463,9 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: Colors.blue, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16 },
   saveError: { color: '#A32D2D', fontSize: 13, marginTop: 16, textAlign: 'center' },
   saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '500' },
+  headerParent: { fontSize: 12, color: Colors.textTertiary, textAlign: 'center', marginTop: 2 },
+  duplicateBtn: { borderWidth: 1, borderColor: '#c0cfe0', borderStyle: 'dashed', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 10 },
+  duplicateBtnText: { fontSize: 14, color: Colors.blue },
   doneBtn: { borderWidth: 0.5, borderColor: Colors.green, borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8, backgroundColor: '#fff' },
   doneBtnActive: { backgroundColor: '#E1F5EE' },
   doneBtnText: { fontSize: 14, color: Colors.teal },

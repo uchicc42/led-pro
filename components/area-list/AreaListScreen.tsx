@@ -3,9 +3,6 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import { NotOnDevice } from '../ui/not-on-device';
 import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
+import AreaFormModal from './AreaFormModal';
 import ReorderList from './ReorderList';
 import { useAreaList } from './useAreaList';
 
@@ -24,14 +22,106 @@ import { useAreaList } from './useAreaList';
 
 export default function AreaListScreen() {
   const {
-    jobId, job, loading, notOnDevice, addingArea, setAddingArea, newAreaName, setNewAreaName,
-    filter, setFilter, jobNotes, notesSaved, saveJobNotes, addArea, toggleComplete, deleteArea,
-    getFilteredAreas, completed, total, progress, openIssues, reordering, setReordering, moveArea,
+    jobId, job, loading, notOnDevice, filter, setFilter, jobNotes, notesSaved, saveJobNotes, toggleComplete, deleteArea,
+    getFilteredGroups, groups, expanded, toggleExpanded, completed, total, progress, openIssues, reordering, setReordering, moveArea,
+    areaForm, parentOptions, openAddArea, openDuplicate, setFormName, setFormParent, closeAreaForm, submitAreaForm,
   } = useAreaList({ live: 'realtime' });
   // The role check reads the web session store, which doesn't exist on native, so this was always false here.
   const isElectrician = false;
   const [dragging, setDragging] = useState(false);
-  const closeAddArea = () => { setAddingArea(false); setNewAreaName(''); };
+  const filteredGroups = getFilteredGroups();
+
+  function areaMenu(area: any, roomCount: number, isRoom: boolean) {
+    const confirmDelete = () => Alert.alert(
+      'Delete area',
+      roomCount > 0
+        ? `Delete "${area.name}" and the ${roomCount} room${roomCount === 1 ? '' : 's'} inside it? This also removes all their light rows.`
+        : `Delete "${area.name}"? This will also remove all light rows.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteArea(area) },
+      ]
+    );
+    Alert.alert(area.name, 'What would you like to do?', [
+      { text: 'Cancel', style: 'cancel' },
+      ...(!isRoom ? [{ text: '＋ Add room inside', onPress: () => openAddArea(area.id) }] : []),
+      { text: '🗑 Delete area', style: 'destructive' as const, onPress: confirmDelete },
+    ]);
+  }
+
+  // One area or room on the list.
+  function areaCard(area: any, opts: { isRoom: boolean; rooms?: any[]; roomsShown?: boolean }) {
+    const rooms = opts.rooms ?? [];
+    const roomsDone = rooms.filter(r => r.is_complete).length;
+    return (
+      <View
+        key={area.id}
+        style={[styles.areaCard, opts.isRoom && styles.roomCard, { borderLeftColor: area.is_complete ? Colors.green : Colors.blue }]}
+      >
+        <TouchableOpacity
+          style={styles.areaCardMain}
+          onPress={() => router.push(`/area-entry?areaId=${area.id}&jobId=${jobId}`)}
+        >
+          <View style={styles.areaTop}>
+            <Text style={styles.areaName}>{opts.isRoom ? '› ' : ''}{area.name}</Text>
+            <TouchableOpacity
+              style={[styles.checkBtn, area.is_complete && styles.checkBtnDone]}
+              onPress={() => toggleComplete(area)}
+            >
+              <Text style={{ color: area.is_complete ? '#fff' : Colors.textTertiary, fontSize: 12 }}>
+                {area.is_complete ? '✓' : '○'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.areaMeta}>
+            <Text style={styles.areaCount}>{area.light_rows?.length || 0} light rows</Text>
+            {area.entered_by && (
+              <View style={[styles.nameTag, { backgroundColor: area.entered_by.color + '22' }]}>
+                <Text style={[styles.nameTagText, { color: area.entered_by.color }]}>
+                  {area.entered_by.initials}
+                </Text>
+              </View>
+            )}
+            {rooms.length > 0 && (
+              <TouchableOpacity style={styles.roomsToggle} onPress={() => toggleExpanded(area.id)}>
+                <Text style={styles.roomsToggleText}>
+                  {opts.roomsShown ? '▾' : '▸'} {rooms.length} room{rooms.length === 1 ? '' : 's'} · {roomsDone} done
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.areaActions}>
+          <TouchableOpacity
+            style={styles.areaActionBtn}
+            onPress={() => router.push(`/area-entry?areaId=${area.id}&jobId=${jobId}`)}
+          >
+            <Text style={styles.areaActionBtnText}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.areaActionBtn, styles.areaActionBtnElec]}
+            onPress={() => router.push(`/electrician?areaId=${area.id}&jobId=${jobId}`)}
+          >
+            <Text style={[styles.areaActionBtnText, { color: '#712B13' }]}>⚡ Elec</Text>
+          </TouchableOpacity>
+          {!isElectrician && (
+            <TouchableOpacity style={styles.areaActionBtn} onPress={() => openDuplicate(area)} accessibilityLabel={`Duplicate ${area.name}`}>
+              <Text style={styles.areaActionBtnText}>⧉ Duplicate</Text>
+            </TouchableOpacity>
+          )}
+          {!isElectrician && (
+            <TouchableOpacity
+              style={[styles.areaActionBtn, { borderRightWidth: 0 }]}
+              onPress={() => areaMenu(area, rooms.length, opts.isRoom)}
+            >
+              <Text style={[styles.areaActionBtnText, { color: Colors.textSecondary, fontSize: 16 }]}>···</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  }
 
   if (notOnDevice) return <NotOnDevice />;
 
@@ -109,87 +199,36 @@ export default function AreaListScreen() {
         </View>
 
         {reordering && (
-          <ReorderList areas={getFilteredAreas()} onMove={moveArea} onDraggingChange={setDragging} />
+          <>
+            <ReorderList areas={groups.map(g => g.area)} onMove={(from, to) => moveArea(null, from, to)} onDraggingChange={setDragging} />
+            {/* Rooms are ordered within their area. */}
+            {groups.filter(g => g.rooms.length > 1).map(g => (
+              <View key={g.area.id}>
+                <Text style={styles.reorderGroupLabel}>Rooms in {g.area.name}</Text>
+                <ReorderList areas={g.rooms} onMove={(from, to) => moveArea(g.area.id, from, to)} onDraggingChange={setDragging} />
+              </View>
+            ))}
+          </>
         )}
 
-        {!reordering && getFilteredAreas().map(area => (
-          <View
-            key={area.id}
-            style={[styles.areaCard, { borderLeftColor: area.is_complete ? Colors.green : Colors.blue }]}
-          >
-            <TouchableOpacity
-              style={styles.areaCardMain}
-              onPress={() => router.push(`/area-entry?areaId=${area.id}&jobId=${jobId}`)}
-            >
-              <View style={styles.areaTop}>
-                <Text style={styles.areaName}>{area.name}</Text>
-                <TouchableOpacity
-                  style={[styles.checkBtn, area.is_complete && styles.checkBtnDone]}
-                  onPress={() => toggleComplete(area)}
-                >
-                  <Text style={{ color: area.is_complete ? '#fff' : Colors.textTertiary, fontSize: 12 }}>
-                    {area.is_complete ? '✓' : '○'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.areaMeta}>
-                <Text style={styles.areaCount}>{area.light_rows?.length || 0} light rows</Text>
-                {area.entered_by && (
-                  <View style={[styles.nameTag, { backgroundColor: area.entered_by.color + '22' }]}>
-                    <Text style={[styles.nameTagText, { color: area.entered_by.color }]}>
-                      {area.entered_by.initials}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.areaActions}>
-              <TouchableOpacity
-                style={styles.areaActionBtn}
-                onPress={() => router.push(`/area-entry?areaId=${area.id}&jobId=${jobId}`)}
-              >
-                <Text style={styles.areaActionBtnText}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.areaActionBtn, styles.areaActionBtnElec]}
-                onPress={() => router.push(`/electrician?areaId=${area.id}&jobId=${jobId}`)}
-              >
-                <Text style={[styles.areaActionBtnText, { color: '#712B13' }]}>⚡ Elec</Text>
-              </TouchableOpacity>
-              {!isElectrician && (
-                <TouchableOpacity
-                  style={[styles.areaActionBtn, { borderRightWidth: 0 }]}
-                  onPress={() => {
-                    Alert.alert(
-                      area.name,
-                      'What would you like to do?',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: '🗑 Delete area',
-                          style: 'destructive',
-                          onPress: () => Alert.alert(
-                            'Delete area',
-                            `Delete "${area.name}"? This will also remove all light rows.`,
-                            [
-                              { text: 'Cancel', style: 'cancel' },
-                              { text: 'Delete', style: 'destructive', onPress: () => deleteArea(area) },
-                            ]
-                          )
-                        },
-                      ]
-                    );
-                  }}
-                >
-                  <Text style={[styles.areaActionBtnText, { color: Colors.textSecondary, fontSize: 16 }]}>···</Text>
+        {!reordering && filteredGroups.map(g => {
+          // While filtering, matching rooms show without opening their area.
+          const roomsShown = g.rooms.length > 0 && (expanded.has(g.area.id) || filter !== 'all');
+          const allRooms = groups.find(x => x.area.id === g.area.id)?.rooms ?? g.rooms;
+          return (
+            <View key={g.area.id}>
+              {areaCard(g.area, { isRoom: false, rooms: allRooms, roomsShown })}
+              {roomsShown && g.rooms.map(r => areaCard(r, { isRoom: true }))}
+              {roomsShown && !isElectrician && (
+                <TouchableOpacity style={styles.addRoomBtn} onPress={() => openAddArea(g.area.id)}>
+                  <Text style={styles.addRoomText}>+ Add room to {g.area.name}</Text>
                 </TouchableOpacity>
               )}
             </View>
-          </View>
-        ))}
+          );
+        })}
 
-        {!reordering && getFilteredAreas().length === 0 && (
+        {!reordering && filteredGroups.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>
               {filter === 'all' ? 'No areas yet — add your first one!' : `No ${filter} areas.`}
@@ -246,7 +285,7 @@ export default function AreaListScreen() {
         </TouchableOpacity>
 
         {!isElectrician && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => setAddingArea(true)}>
+          <TouchableOpacity style={styles.addBtn} onPress={() => openAddArea()}>
             <Text style={styles.addBtnText}>+ Add area</Text>
           </TouchableOpacity>
         )}
@@ -255,37 +294,19 @@ export default function AreaListScreen() {
 
       {/* Floating add button: stays in the corner while the list scrolls. */}
       {!isElectrician && !reordering && (
-        <TouchableOpacity style={styles.fab} onPress={() => setAddingArea(true)} accessibilityLabel="Add area">
+        <TouchableOpacity style={styles.fab} onPress={() => openAddArea()} accessibilityLabel="Add area">
           <Text style={styles.fabText}>+</Text>
         </TouchableOpacity>
       )}
 
-      <Modal visible={addingArea} transparent animationType="fade" onRequestClose={closeAddArea}>
-        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={closeAddArea} accessibilityLabel="Cancel" />
-          <View style={styles.addAreaForm}>
-            <Text style={styles.addAreaTitle}>New area</Text>
-            <TextInput
-              style={styles.addAreaInput}
-              placeholder="Area name (e.g. Gym, Hallway A)"
-              placeholderTextColor={Colors.textTertiary}
-              value={newAreaName}
-              onChangeText={setNewAreaName}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={addArea}
-            />
-            <View style={styles.addAreaBtns}>
-              <TouchableOpacity style={styles.addAreaConfirm} onPress={addArea}>
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>Add</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.addAreaCancel} onPress={closeAddArea}>
-                <Text style={{ color: Colors.textSecondary, fontSize: 14 }}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <AreaFormModal
+        form={areaForm}
+        parentOptions={parentOptions}
+        setName={setFormName}
+        setParent={setFormParent}
+        onSubmit={submitAreaForm}
+        onClose={closeAreaForm}
+      />
     </SafeAreaView>
   );
 }
@@ -339,13 +360,12 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 6,
   },
   fabText: { color: '#fff', fontSize: 30, lineHeight: 32, fontWeight: '300' },
-  modalOverlay: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.35)' },
-  addAreaTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary, marginBottom: 10 },
-  addAreaForm: { backgroundColor: '#fff', borderRadius: 12, padding: 16, borderWidth: 0.5, borderColor: Colors.borderLight, width: '100%', maxWidth: 480, alignSelf: 'center' },
-  addAreaInput: { borderWidth: 0.5, borderColor: Colors.borderLight, borderRadius: 8, padding: 10, fontSize: 14, color: Colors.textPrimary, marginBottom: 10 },
-  addAreaBtns: { flexDirection: 'row', gap: 10 },
-  addAreaConfirm: { flex: 1, backgroundColor: Colors.blue, borderRadius: 8, padding: 10, alignItems: 'center' },
-  addAreaCancel: { flex: 1, backgroundColor: Colors.bgSecondary, borderRadius: 8, padding: 10, alignItems: 'center', borderWidth: 0.5, borderColor: Colors.borderLight },
+  roomCard: { marginLeft: 22 },
+  roomsToggle: { marginLeft: 'auto', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: '#E6F1FB' },
+  roomsToggleText: { fontSize: 12, color: '#0C447C', fontWeight: '500' },
+  addRoomBtn: { marginLeft: 22, borderWidth: 1, borderColor: '#c0cfe0', borderStyle: 'dashed', borderRadius: 10, padding: 10, alignItems: 'center', marginBottom: 10 },
+  addRoomText: { fontSize: 13, color: Colors.blue },
+  reorderGroupLabel: { fontSize: 11, color: Colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1, marginTop: 14, marginBottom: 8 },
   addBtn: { borderWidth: 1, borderColor: '#c0cfe0', borderStyle: 'dashed', borderRadius: 10, padding: 14, alignItems: 'center', marginBottom: 10 },
   addBtnText: { fontSize: 14, color: Colors.blue },
 });

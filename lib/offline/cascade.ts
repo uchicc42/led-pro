@@ -16,6 +16,8 @@ export function deleteLightRowCascade(lightRowId: string) {
 
 export function deleteAreaCascade(areaId: string) {
   const s = getSnapshot();
+  // Rooms inside this area go with it (one level, so no deeper rooms).
+  s.where('areas', a => a.parent_area_id === areaId && a.id !== areaId).forEach(room => deleteAreaCascade(room.id));
   s.where('light_rows', r => r.area_id === areaId).forEach(r => deleteLightRowCascade(r.id));
   s.where('area_controls', c => c.area_id === areaId).forEach(c => deleteRow('area_controls', c.id));
   s.where('area_photos', p => p.area_id === areaId).forEach(p => deleteRow('area_photos', p.id));

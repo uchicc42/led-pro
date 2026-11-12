@@ -51,7 +51,7 @@ export default function ElectricianScreen() {
   const {
     areaId, jobId, area, job, lightRows, codes, notes, setNotes, needsFollowUp, setNeedsFollowUp,
     loading, notOnDevice, saving, savedFlash, isOnlineStatus, getInstallRow, updateInstallRow, save,
-    getRowControls, areaLevelControls, getControlStatus, updateControlStatus, enabledKinds,
+    getRowControls, areaLevelControls, getControlStatus, updateControlStatus, enabledKinds, parentArea,
   } = useElectrician();
 
   if (notOnDevice) return <NotOnDevice backHref={`/area-list?jobId=${jobId}`} />;
@@ -72,7 +72,7 @@ export default function ElectricianScreen() {
             ← Back
           </button>
           <div>
-            <div style={webStyles.headerTitle}>{area?.name}</div>
+            <div style={webStyles.headerTitle}>{parentArea ? `${parentArea.name} › ` : ''}{area?.name}</div>
             <div style={webStyles.headerSub}>{job?.name}</div>
           </div>
           <div style={{

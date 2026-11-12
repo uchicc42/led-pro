@@ -2,12 +2,14 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getCurrentUser } from '../../constants/userStore';
 import { byAreaOrder, reorderPatches } from '../../lib/areaOrder';
+import { areaTree } from '../../lib/areaTree';
 import { isOnline, useOnline } from '../../lib/offline/connectivity';
 import { deleteAreaCascade } from '../../lib/offline/cascade';
-import { newId, patchRow, queueCall, saveRow } from '../../lib/offline/data';
+import { patchRow, queueCall } from '../../lib/offline/data';
 import { useStore } from '../../lib/offline/store';
 import { pullJob, trackJob } from '../../lib/offline/sync';
 import { supabase } from '../../supabase';
+import { useAreaForm } from './useAreaForm';
 
 type Options = {
   // Native listens on a realtime channel; web polls instead.
@@ -20,10 +22,11 @@ export function useAreaList({ live, initialUser }: Options) {
   const { jobId } = useLocalSearchParams<{ jobId: string; role: string }>();
   const store = useStore();
   const online = useOnline();
-  const [addingArea, setAddingArea] = useState(false);
-  const [newAreaName, setNewAreaName] = useState('');
   const [filter, setFilter] = useState('all');
   const [reordering, setReordering] = useState(false);
+  // Areas whose rooms are showing on the list.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const areaFormState = useAreaForm(jobId);
   const [currentUser, setCurrentUser_state] = useState<any>(() => initialUser?.() ?? null);
   const [jobNotes, setJobNotes] = useState('');
   const [notesSaved, setNotesSaved] = useState(false);
@@ -89,19 +92,17 @@ export function useAreaList({ live, initialUser }: Options) {
       light_rows: store.where('light_rows', r => r.area_id === a.id),
     }));
 
-  async function addArea() {
-    if (!newAreaName.trim()) return;
-    const user = await getCurrentUser();
-    saveRow('areas', {
-      id: newId(),
-      job_id: jobId,
-      name: newAreaName.trim(),
-      entered_by: user?.id ?? null,
-      is_complete: false,
-      created_at: new Date().toISOString(),
-    });
-    setNewAreaName('');
-    setAddingArea(false);
+  function toggleExpanded(areaId: string) {
+    const next = new Set(expanded);
+    if (next.has(areaId)) next.delete(areaId); else next.add(areaId);
+    setExpanded(next);
+  }
+
+  // Adds the area or copy from the box; a new room opens its area so it can be seen.
+  async function submitAreaForm() {
+    const result = await areaFormState.submitAreaForm();
+    if (result?.parentId && !expanded.has(result.parentId)) setExpanded(new Set(expanded).add(result.parentId));
+    return result;
   }
 
   async function toggleComplete(area: any) {
@@ -126,19 +127,30 @@ export function useAreaList({ live, initialUser }: Options) {
     deleteAreaCascade(area.id);
   }
 
-  function moveArea(from: number, to: number) {
-    reorderPatches(areas, from, to).forEach(({ id, sort_order }) => patchRow('areas', id, { sort_order }));
+  const groups = areaTree(areas);
+
+  /** Moves an area within its group: the top-level areas (parentId null) or the rooms of one area. */
+  function moveArea(parentId: string | null, from: number, to: number) {
+    const group = parentId ? groups.find(g => g.area.id === parentId)?.rooms ?? [] : groups.map(g => g.area);
+    reorderPatches(group, from, to).forEach(({ id, sort_order }) => patchRow('areas', id, { sort_order }));
   }
 
-  function getFilteredAreas() {
-    // Reordering works on the whole list, so filters are set aside meanwhile.
-    if (reordering) return areas;
+  function matchesFilter(a: any) {
     switch (filter) {
-      case 'todo': return areas.filter(a => !a.is_complete);
-      case 'complete': return areas.filter(a => a.is_complete);
-      case 'mine': return areas.filter(a => a.entered_by_id && a.entered_by_id === currentUser?.id);
-      default: return areas;
+      case 'todo': return !a.is_complete;
+      case 'complete': return !!a.is_complete;
+      case 'mine': return !!a.entered_by_id && a.entered_by_id === currentUser?.id;
+      default: return true;
     }
+  }
+
+  // Areas with their rooms, filtered. An area shows when it or any of its rooms matches.
+  // Reordering works on the whole list, so filters are set aside meanwhile.
+  function getFilteredGroups() {
+    if (reordering || filter === 'all') return groups;
+    return groups
+      .map(g => ({ area: g.area, rooms: g.rooms.filter(matchesFilter) }))
+      .filter(g => matchesFilter(g.area) || g.rooms.length > 0);
   }
 
   const completed = areas.filter(a => a.is_complete).length;
@@ -151,8 +163,8 @@ export function useAreaList({ live, initialUser }: Options) {
   const notOnDevice = store.loaded && !job && !online;
 
   return {
-    jobId, job, loading, notOnDevice, addingArea, setAddingArea, newAreaName, setNewAreaName,
-    filter, setFilter, jobNotes, notesSaved, saveJobNotes, addArea, toggleComplete, deleteArea,
-    getFilteredAreas, completed, total, progress, openIssues, reordering, setReordering, moveArea,
+    jobId, job, loading, notOnDevice, filter, setFilter, jobNotes, notesSaved, saveJobNotes, toggleComplete, deleteArea,
+    getFilteredGroups, groups, expanded, toggleExpanded, completed, total, progress, openIssues, reordering, setReordering, moveArea,
+    ...areaFormState, submitAreaForm,
   };
 }

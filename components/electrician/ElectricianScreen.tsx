@@ -56,7 +56,7 @@ export default function ElectricianScreen() {
   const {
     areaId, jobId, area, job, lightRows, codes, notes, setNotes, needsFollowUp, setNeedsFollowUp,
     loading, notOnDevice, saving, savedFlash, isOnlineStatus, getInstallRow, updateInstallRow, save,
-    getRowControls, areaLevelControls, getControlStatus, updateControlStatus, enabledKinds,
+    getRowControls, areaLevelControls, getControlStatus, updateControlStatus, enabledKinds, parentArea,
   } = useElectrician();
 
   if (notOnDevice) return <NotOnDevice backHref={`/area-list?jobId=${jobId}`} />;
@@ -75,7 +75,7 @@ export default function ElectricianScreen() {
           <TouchableOpacity onPress={() => router.push(`/area-list?jobId=${jobId}`)}>
             <Text style={styles.backBtn}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>{area?.name}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>{parentArea ? `${parentArea.name} › ` : ''}{area?.name}</Text>
           <View style={[styles.onlineBadge, { backgroundColor: isOnlineStatus ? '#E1F5EE' : '#FAECE7' }]}>
             <Text style={[styles.onlineBadgeText, { color: isOnlineStatus ? '#085041' : '#712B13' }]}>
               {isOnlineStatus ? '● Online' : '● Offline'}
