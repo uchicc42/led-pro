@@ -5,7 +5,7 @@ import { Colors } from '../../constants/Colors';
 import { LAYOUT_CANVAS_ENABLED } from '../../constants/features';
 import { NotOnDevice } from '../ui/not-on-device';
 import AreaPhotos from '../area-photos/AreaPhotos';
-import { CONTROL_LABEL } from '../area-entry/useAreaEntry';
+import { CONTROL_LABEL, controlsHeading } from '../../lib/controlKinds';
 import { withMount } from '../scope-export/useScopeExport';
 import { getStatusLabel, useElectrician } from './useElectrician';
 
@@ -18,7 +18,7 @@ const statusColors = (s: string) => ({
   border: s === 'complete' ? Colors.green : s === 'in_progress' ? Colors.blue : '#999',
 });
 
-// One sensor/photocell line with its own install status pills.
+// One sensor/photocell/dimmer line with its own install status pills.
 function ControlStatusLine({ control, status, onStatus }: { control: any; status: string; onStatus: (s: string) => void }) {
   return (
     <div style={webStyles.controlBlock}>
@@ -51,7 +51,7 @@ export default function ElectricianScreen() {
   const {
     areaId, jobId, area, job, lightRows, codes, notes, setNotes, needsFollowUp, setNeedsFollowUp,
     loading, notOnDevice, saving, savedFlash, isOnlineStatus, getInstallRow, updateInstallRow, save,
-    getRowControls, areaLevelControls, getControlStatus, updateControlStatus,
+    getRowControls, areaLevelControls, getControlStatus, updateControlStatus, enabledKinds,
   } = useElectrician();
 
   if (notOnDevice) return <NotOnDevice backHref={`/area-list?jobId=${jobId}`} />;
@@ -217,7 +217,7 @@ export default function ElectricianScreen() {
 
           {areaLevelControls.length > 0 && (
             <>
-              <div style={{ ...webStyles.sectionLabel, marginTop: 8 }}>Area sensors & photocells</div>
+              <div style={{ ...webStyles.sectionLabel, marginTop: 8 }}>Area {controlsHeading(enabledKinds).toLowerCase()}</div>
               <div style={webStyles.installBlock}>
                 {areaLevelControls.map(c => (
                   <ControlStatusLine key={c.id} control={c} status={getControlStatus(c)} onStatus={s => updateControlStatus(c.id, s)} />

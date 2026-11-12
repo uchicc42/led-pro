@@ -12,6 +12,7 @@ export function useNewJob() {
   const [mode, setMode] = useState<'counting' | 'electrician'>('counting');
   const [colSensor, setColSensor] = useState(false);
   const [colPhotocell, setColPhotocell] = useState(false);
+  const [colDimmer, setColDimmer] = useState(false);
   const [colLayout, setColLayout] = useState(false);
   const [colHours, setColHours] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -36,6 +37,7 @@ export function useNewJob() {
       status: 'active',
       col_sensor: colSensor,
       col_photocell: colPhotocell,
+      col_dimmer: colDimmer,
       col_layout: colLayout,
       col_hours: colHours,
       created_by: user?.id ?? null,
@@ -50,6 +52,7 @@ export function useNewJob() {
     setMode('counting');
     setColSensor(false);
     setColPhotocell(false);
+    setColDimmer(false);
     setColLayout(false);
     setColHours(false);
     setSaving(false);
@@ -60,6 +63,7 @@ export function useNewJob() {
   const columns = [
     { label: 'Occupancy sensor', sub: 'Sensors per light row and per area', val: colSensor, set: setColSensor },
     { label: 'Photocell', sub: 'Photocells per light row and per area', val: colPhotocell, set: setColPhotocell },
+    { label: 'Dimmer', sub: 'Dimmers per light row and per area', val: colDimmer, set: setColDimmer },
     ...(LAYOUT_CANVAS_ENABLED ? [{ label: 'Room layout / exhibit', sub: 'Ceiling diagram per area', val: colLayout, set: setColLayout }] : []),
     { label: 'Hours-based flag', sub: 'Color-code limited-hour lights', val: colHours, set: setColHours },
   ];

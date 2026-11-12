@@ -12,11 +12,12 @@ import { supabase } from '../../supabase';
 import { PHOTO_BUCKET } from '../area-photos/pickPhotos';
 
 type Mode = 'counting' | 'electrician';
-type FeatureField = 'col_sensor' | 'col_photocell' | 'col_layout' | 'col_hours';
+type FeatureField = 'col_sensor' | 'col_photocell' | 'col_dimmer' | 'col_layout' | 'col_hours';
 
 const FEATURE_LABEL: Record<FeatureField, string> = {
   col_sensor: 'Occupancy sensor',
   col_photocell: 'Photocell',
+  col_dimmer: 'Dimmer',
   col_layout: 'Room layout',
   col_hours: 'Hours flag',
 };
@@ -54,6 +55,7 @@ export function useJobSettings() {
   const features: Record<FeatureField, boolean> = {
     col_sensor: !!job?.col_sensor,
     col_photocell: !!job?.col_photocell,
+    col_dimmer: !!job?.col_dimmer,
     col_layout: !!job?.col_layout,
     col_hours: !!job?.col_hours,
   };
@@ -190,6 +192,7 @@ export function useJobSettings() {
     sub: {
       col_sensor: 'Sensors per light row and per area',
       col_photocell: 'Photocells per light row and per area',
+      col_dimmer: 'Dimmers per light row and per area',
       col_layout: 'Ceiling diagram per area',
       col_hours: 'Color-code limited-hour lights',
     }[field],

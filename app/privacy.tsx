@@ -11,7 +11,7 @@ export default function PrivacyPolicy() {
           heading: 'Information the app stores',
           body: [
             'Team member details: name, initials, colour, role and notification preferences. PINs are stored only as one-way (hashed) values on the server and are never shown or sent to devices.',
-            'Job information entered by the team: job names, locations, areas, light counts and types, sensors and photocells, notes, install progress, issues, and photos taken on site.',
+            'Job information entered by the team: job names, locations, areas, light counts and types, sensors, photocells and dimmers, notes, install progress, issues, and photos taken on site.',
             'A device push notification token, if a team member turns on notifications.',
           ],
         },

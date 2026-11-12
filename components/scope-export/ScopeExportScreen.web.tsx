@@ -2,13 +2,14 @@ import { router } from 'expo-router';
 import { useState, type CSSProperties } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { CONTROL_PLURAL, controlsHeading } from '../../lib/controlKinds';
 import SummaryCard from '../job-summary/SummaryCard';
 import { areaControlsText, generateHTML, rowColor, rowControlsText, sortedRows, tintOf, useScopeExport, withMount } from './useScopeExport';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses ScopeExportScreen.tsx.
 
 export default function ScopeExportScreen() {
-  const { jobId, job, areas, loading, kinds, typeColors, codes, legend, fixtures, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
+  const { jobId, job, areas, loading, kinds, typeColors, codes, legend, fixtures, totalOld, totalNew, controlTotals } = useScopeExport();
   const [generating, setGenerating] = useState(false);
 
   function exportPDF() {
@@ -56,18 +57,12 @@ export default function ScopeExportScreen() {
             <div style={webStyles.statVal}>{areas.length}</div>
             <div style={webStyles.statLabel}>Areas</div>
           </div>
-          {kinds.includes('occupancy') && (
-            <div style={webStyles.statCard}>
-              <div style={webStyles.statVal}>{totalSensors}</div>
-              <div style={webStyles.statLabel}>Occupancy sensors</div>
+          {kinds.map(k => (
+            <div key={k} style={webStyles.statCard}>
+              <div style={webStyles.statVal}>{controlTotals[k]}</div>
+              <div style={webStyles.statLabel}>{CONTROL_PLURAL[k]}</div>
             </div>
-          )}
-          {kinds.includes('photocell') && (
-            <div style={webStyles.statCard}>
-              <div style={webStyles.statVal}>{totalPhotocells}</div>
-              <div style={webStyles.statLabel}>Photocells</div>
-            </div>
-          )}
+          ))}
         </div>
 
         {/* Preview table */}
@@ -89,7 +84,7 @@ export default function ScopeExportScreen() {
             <thead>
               <tr>
                 {['Area', 'Old qty', 'Current type', 'New qty', 'New type', 'Lumen', 'Hours',
-                  ...(kinds.length > 0 ? ['Sensors / photocells'] : []), 'Notes'].map(h => (
+                  ...(kinds.length > 0 ? [controlsHeading(kinds)] : []), 'Notes'].map(h => (
                   <th key={h} style={webStyles.th}>{h}</th>
                 ))}
               </tr>

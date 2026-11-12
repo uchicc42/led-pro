@@ -5,7 +5,8 @@ import { byAreaOrder } from '../../lib/areaOrder';
 import { productCodes } from '../../lib/productCodes';
 import { supabase } from '../../supabase';
 import { FixtureTotal, SUMMARY_CSS, escapeHtml, fixtureTotals, summaryBodyHTML } from '../job-summary/summary';
-import { CONTROL_LABEL, ControlKind } from '../area-entry/useAreaEntry';
+import { CONTROL_KINDS, CONTROL_LABEL, CONTROL_PLURAL, ControlKind, controlsHeading, enabledControlKinds } from '../../lib/controlKinds';
+export { enabledControlKinds };
 
 export function useScopeExport() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
@@ -82,12 +83,6 @@ export function legendFor(areas: any[], typeColors: Map<string, string>) {
   return [...seen.entries()].map(([name, color]) => ({ name, color }));
 }
 
-// Sensors/photocells only appear on the scope when switched on in Job settings.
-export function enabledControlKinds(job: any): ControlKind[] {
-  return (['occupancy', 'photocell'] as ControlKind[])
-    .filter(k => (k === 'occupancy' ? job?.col_sensor : job?.col_photocell));
-}
-
 export function sortedRows(area: any): any[] {
   return [...(area.light_rows || [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 }
@@ -98,7 +93,8 @@ function visibleControls(area: any, kinds: ControlKind[]): any[] {
     .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 }
 
-// "Sensor: 2 × Ceiling PIR, Photocell: 1 × Photocell" for one light row.
+// "OC Sensor: 2 × Ceiling PIR, Dimmer: 1 × 0-10V" for one light row.
+// Sensors/photocells/dimmers only appear on the scope when switched on in Job settings.
 export function rowControlsText(area: any, rowId: string, kinds: ControlKind[]) {
   return visibleControls(area, kinds)
     .filter(c => c.light_row_id === rowId)
@@ -119,18 +115,18 @@ function describeControl(c: any) {
 }
 
 export function getTotals(areas: any[], kinds: ControlKind[] = []) {
-  let totalOld = 0, totalNew = 0, totalSensors = 0, totalPhotocells = 0;
+  let totalOld = 0, totalNew = 0;
+  const controlTotals = Object.fromEntries(CONTROL_KINDS.map(k => [k, 0])) as Record<ControlKind, number>;
   areas.forEach(area => {
     (area.light_rows || []).forEach((row: any) => {
       if (!row.new_addition) totalOld += row.quantity || 0;
       if (!row.removed_only) totalNew += row.new_quantity || 0;
     });
     visibleControls(area, kinds).forEach(c => {
-      if (c.kind === 'occupancy') totalSensors += c.quantity || 0;
-      else totalPhotocells += c.quantity || 0;
+      controlTotals[c.kind as ControlKind] += c.quantity || 0;
     });
   });
-  return { totalOld, totalNew, totalSensors, totalPhotocells };
+  return { totalOld, totalNew, controlTotals };
 }
 
 // Printable scope-of-work document, shared by the web print flow and native expo-print.
@@ -140,7 +136,7 @@ export function generateHTML(
 ) {
   const legend = legendFor(areas, typeColors);
   const kinds = enabledControlKinds(job);
-  const { totalOld, totalNew, totalSensors, totalPhotocells } = getTotals(areas, kinds);
+  const { totalOld, totalNew, controlTotals } = getTotals(areas, kinds);
   const showControls = kinds.length > 0;
   const columnCount = showControls ? 9 : 8;
   const date = job?.date ? new Date(job.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
@@ -227,8 +223,7 @@ export function generateHTML(
           <div class="total-val">${areas.length}</div>
           <div class="total-label">Areas covered</div>
         </div>
-        ${kinds.includes('occupancy') ? `<div class="total-card"><div class="total-val">${totalSensors}</div><div class="total-label">Occupancy sensors</div></div>` : ''}
-        ${kinds.includes('photocell') ? `<div class="total-card"><div class="total-val">${totalPhotocells}</div><div class="total-label">Photocells</div></div>` : ''}
+        ${kinds.map(k => `<div class="total-card"><div class="total-val">${controlTotals[k]}</div><div class="total-label">${CONTROL_PLURAL[k]}</div></div>`).join('')}
       </div>
 
       ${summaryBodyHTML(job, fixtures)}
@@ -245,7 +240,7 @@ export function generateHTML(
             <th>New light type</th>
             <th class="center">Lumen</th>
             <th class="center">Hours</th>
-            ${showControls ? '<th>Sensors / photocells</th>' : ''}
+            ${showControls ? `<th>${controlsHeading(kinds)}</th>` : ''}
             <th>Notes</th>
           </tr>
         </thead>

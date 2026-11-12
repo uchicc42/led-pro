@@ -136,7 +136,7 @@ export default function HomeScreen() {
 }
 
 const webStyles: Record<string, CSSProperties> = {
-  page: { minHeight: '100vh', background: Colors.bgSecondary, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
+  page: { height: '100vh', overflowY: 'auto', background: Colors.bgSecondary, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
   container: { maxWidth: 900, margin: '0 auto', padding: '40px 32px' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
   greeting: { fontSize: 13, color: Colors.textTertiary, marginBottom: 4 },

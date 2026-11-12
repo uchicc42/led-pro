@@ -5,6 +5,7 @@ import { newId, patchRow, saveRow } from '../../lib/offline/data';
 import { useStore } from '../../lib/offline/store';
 import { trackJob } from '../../lib/offline/sync';
 import { productCodes } from '../../lib/productCodes';
+import { enabledControlKinds } from '../../lib/controlKinds';
 
 type InstallEdit = { status?: string; removed?: boolean; removal_note?: string };
 
@@ -54,9 +55,8 @@ export function useElectrician() {
   }, [savedFlash]);
 
   // Only kinds switched on in Job settings are shown.
-  const enabledKinds = (['occupancy', 'photocell'] as const)
-    .filter(k => (k === 'occupancy' ? job?.col_sensor : job?.col_photocell));
-  const visibleControls = controls.filter(c => (enabledKinds as readonly string[]).includes(c.kind));
+  const enabledKinds = enabledControlKinds(job);
+  const visibleControls = controls.filter(c => enabledKinds.includes(c.kind));
   const getRowControls = (lightRowId: string) => visibleControls.filter(c => c.light_row_id === lightRowId);
   const areaLevelControls = visibleControls.filter(c => !c.light_row_id);
 
@@ -131,7 +131,7 @@ export function useElectrician() {
   return {
     areaId, jobId, area, job, lightRows, codes, notes, setNotes, needsFollowUp, setNeedsFollowUp,
     loading, notOnDevice, saving, savedFlash, isOnlineStatus, getInstallRow, updateInstallRow, save,
-    getRowControls, areaLevelControls, getControlStatus, updateControlStatus,
+    getRowControls, areaLevelControls, getControlStatus, updateControlStatus, enabledKinds,
   };
 }
 

@@ -21,6 +21,7 @@ import { clearCurrentUser, getCurrentUser } from '../../constants/userStore';
 import QuickBooksSection from './QuickBooksSection';
 import TeamSection from './TeamSection';
 import { appVersionLabel } from '../../lib/appVersion';
+import { CONTROL_KINDS, CONTROL_LABEL, CONTROL_PLURAL } from '../../lib/controlKinds';
 import { useSettings } from './useSettings';
 
 // Native UI. The web UI lives in SettingsScreen.web.tsx; Metro picks the right file per platform.
@@ -33,7 +34,7 @@ export default function SettingsScreen() {
     notifyJobNotes, setNotifyJobNotes, expandNotifications, setExpandNotifications,
     updateNotificationPref, addLightType, deleteLightType, currentTypes, newTypes,
     expandControls, setExpandControls, newControlName, setNewControlName,
-    newControlKind, setNewControlKind, addControlType, deleteControlType, sensorTypes, photocellTypes,
+    newControlKind, setNewControlKind, addControlType, deleteControlType, typesByKind, controlTypes,
     editingType, setEditingTypeId, newMountOption, setNewMountOption,
     setLightTypeColor, addMountOption, removeMountOption,
     supplierOptions, newSupplier, setNewSupplier, setLightTypeSupplier,
@@ -124,38 +125,33 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* SENSOR & PHOTOCELL TYPES */}
+        {/* SENSOR, PHOTOCELL & DIMMER TYPES */}
         <TouchableOpacity
           style={styles.sectionRow}
           onPress={() => setExpandControls(!expandControls)}
         >
           <Text style={styles.sectionIcon}>📡</Text>
           <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>Sensor & photocell types</Text>
-            <Text style={styles.sectionSub}>{sensorTypes.length + photocellTypes.length} types</Text>
+            <Text style={styles.sectionTitle}>Sensor, photocell & dimmer types</Text>
+            <Text style={styles.sectionSub}>{controlTypes.length} types</Text>
           </View>
           <Text style={styles.chevron}>{expandControls ? '▲' : '▼'}</Text>
         </TouchableOpacity>
 
         {expandControls && (
           <View style={styles.expandPanel}>
-            <Text style={styles.typeGroupLabel}>Occupancy sensors</Text>
-            <View style={styles.tagWrap}>
-              {sensorTypes.map(t => (
-                <TouchableOpacity key={t.id} style={styles.tag} onPress={() => confirmDelete(t.id, t.name, deleteControlType)}>
-                  <Text style={styles.tagText}>{t.name} ✕</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={[styles.typeGroupLabel, { marginTop: 14 }]}>Photocells</Text>
-            <View style={styles.tagWrap}>
-              {photocellTypes.map(t => (
-                <TouchableOpacity key={t.id} style={styles.tag} onPress={() => confirmDelete(t.id, t.name, deleteControlType)}>
-                  <Text style={styles.tagText}>{t.name} ✕</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {CONTROL_KINDS.map((kind, k) => (
+              <View key={kind}>
+                <Text style={[styles.typeGroupLabel, k > 0 && { marginTop: 14 }]}>{CONTROL_PLURAL[kind]}</Text>
+                <View style={styles.tagWrap}>
+                  {typesByKind[kind].map(t => (
+                    <TouchableOpacity key={t.id} style={styles.tag} onPress={() => confirmDelete(t.id, t.name, deleteControlType)}>
+                      <Text style={styles.tagText}>{t.name} ✕</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ))}
 
             <View style={styles.addTypeRow}>
               <TextInput
@@ -165,12 +161,13 @@ export default function SettingsScreen() {
                 value={newControlName}
                 onChangeText={setNewControlName}
               />
+              {/* Tap to cycle: OC Sensor → Photocell → Dimmer */}
               <TouchableOpacity
-                style={[styles.categoryToggle, newControlKind === 'photocell' && styles.categoryToggleActive]}
-                onPress={() => setNewControlKind(newControlKind === 'occupancy' ? 'photocell' : 'occupancy')}
+                style={[styles.categoryToggle, newControlKind !== 'occupancy' && styles.categoryToggleActive]}
+                onPress={() => setNewControlKind(CONTROL_KINDS[(CONTROL_KINDS.indexOf(newControlKind) + 1) % CONTROL_KINDS.length])}
               >
-                <Text style={[styles.categoryToggleText, newControlKind === 'photocell' && { color: Colors.blue }]}>
-                  {newControlKind === 'occupancy' ? 'Sensor' : 'Photocell'}
+                <Text style={[styles.categoryToggleText, newControlKind !== 'occupancy' && { color: Colors.blue }]}>
+                  {CONTROL_LABEL[newControlKind]}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.addTypeBtn} onPress={addControlType}>

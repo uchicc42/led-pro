@@ -18,6 +18,7 @@ import { LAYOUT_CANVAS_ENABLED } from '../../constants/features';
 import { NotOnDevice } from '../ui/not-on-device';
 import { KeyboardScrollView } from '../ui/keyboard-scroll-view';
 import AreaPhotos from '../area-photos/AreaPhotos';
+import { controlsHeading } from '../../lib/controlKinds';
 import { AreaControl, CONTROL_LABEL, ControlKind, PickerTarget, useAreaEntry } from './useAreaEntry';
 
 // Native (iOS/Android) UI. The web UI lives in AreaEntryScreen.web.tsx; Metro picks the right file per platform.
@@ -94,7 +95,7 @@ function TypePickerModal({ visible, title, options, detailFor, onSelect, onClose
   );
 }
 
-// Qty + type entry for one sensor/photocell line; used per light row and for area-wide controls.
+// Qty + type entry for one sensor/photocell/dimmer line; used per light row and for area-wide controls.
 function ControlLine({ kind, qty, type, onQty, onPickType, onRemove }: {
   kind: ControlKind;
   qty: string;
@@ -259,7 +260,7 @@ export default function AreaEntryScreen() {
               </View>
             )}
 
-            {/* Sensors / photocells on this row */}
+            {/* Sensors / photocells / dimmers on this row */}
             {enabledKinds.length > 0 && (
               <View style={styles.rowControls}>
                 {enabledKinds.map(kind => (
@@ -329,7 +330,7 @@ export default function AreaEntryScreen() {
 
         {enabledKinds.length > 0 && (
           <View style={styles.areaControlsBlock}>
-            <Text style={styles.sectionLabel}>Area sensors & photocells</Text>
+            <Text style={styles.sectionLabel}>Area {controlsHeading(enabledKinds).toLowerCase()}</Text>
             <Text style={styles.areaControlsHint}>For controls that cover the whole area, not one light row.</Text>
             {visibleAreaControls.map((c: AreaControl) => (
               <ControlLine
@@ -345,7 +346,7 @@ export default function AreaEntryScreen() {
             <View style={styles.areaControlsAddRow}>
               {enabledKinds.map(kind => (
                 <TouchableOpacity key={kind} style={styles.areaControlsAddBtn} onPress={() => addAreaControl(kind)}>
-                  <Text style={styles.addRowBtnText}>+ Add {CONTROL_LABEL[kind].toLowerCase()}</Text>
+                  <Text style={styles.addRowBtnText}>+ Add {CONTROL_LABEL[kind]}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -399,15 +400,15 @@ const styles = StyleSheet.create({
   colorDot: { width: 10, height: 10, borderRadius: 5 },
   rowControls: { marginTop: 8, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: Colors.borderLight, gap: 6 },
   controlLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  controlLabel: { width: 64, fontSize: 11, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  controlLabel: { width: 76, fontSize: 11, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
   controlQty: { width: 52, minHeight: 40, borderWidth: 0.5, borderColor: Colors.borderLight, borderRadius: 8, padding: 8, fontSize: 13, color: Colors.textPrimary, textAlign: 'center', backgroundColor: Colors.bgSecondary },
   controlTypeBtn: { flex: 1, minHeight: 40, borderWidth: 0.5, borderColor: Colors.borderLight, borderRadius: 8, paddingHorizontal: 10, backgroundColor: Colors.bgSecondary, justifyContent: 'center' },
   controlRemove: { width: 36, height: 40, alignItems: 'center', justifyContent: 'center' },
   controlRemoveText: { fontSize: 14, color: '#A32D2D' },
   areaControlsBlock: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 0.5, borderColor: Colors.borderLight, padding: 14, marginBottom: 10, gap: 8 },
   areaControlsHint: { fontSize: 11, color: Colors.textTertiary, marginTop: -4 },
-  areaControlsAddRow: { flexDirection: 'row', gap: 8 },
-  areaControlsAddBtn: { flex: 1, borderWidth: 1, borderColor: '#c0cfe0', borderStyle: 'dashed', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
+  areaControlsAddRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  areaControlsAddBtn: { flexGrow: 1, flexBasis: 100, borderWidth: 1, borderColor: '#c0cfe0', borderStyle: 'dashed', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
   container: { flex: 1, backgroundColor: Colors.bgSecondary },
   scroll: { padding: 20, paddingBottom: 80 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },

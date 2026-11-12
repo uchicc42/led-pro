@@ -8,14 +8,13 @@ import { Row, StoreSnapshot, getSnapshot, useStore } from '../../lib/offline/sto
 import { trackJob } from '../../lib/offline/sync';
 import { byName } from '../../lib/byName';
 import { productCodes } from '../../lib/productCodes';
+import { CONTROL_KINDS, CONTROL_LABEL, ControlKind, enabledControlKinds } from '../../lib/controlKinds';
 
 export const LUMEN_OPTIONS = ['L', 'M', 'H', '3500K', '4000K', '5000K'];
 
-// Occupancy sensors and photocells ("controls") are stored in area_controls.
-// A control with a light_row_id belongs to that row; one without belongs to the whole area.
-export type ControlKind = 'occupancy' | 'photocell';
-export const CONTROL_KINDS: ControlKind[] = ['occupancy', 'photocell'];
-export const CONTROL_LABEL: Record<ControlKind, string> = { occupancy: 'Sensor', photocell: 'Photocell' };
+// Sensors, photocells and dimmers ("controls"): see lib/controlKinds.ts.
+export { CONTROL_KINDS, CONTROL_LABEL };
+export type { ControlKind };
 
 export type RowControl = { id: string | null; qty: string; type: string };
 
@@ -48,6 +47,7 @@ export type PickerTarget =
   | { scope: 'areaControl'; key: string; kind: ControlKind };
 
 const emptyControl = (): RowControl => ({ id: null, qty: '', type: '' });
+const emptyControls = () => Object.fromEntries(CONTROL_KINDS.map(k => [k, emptyControl()])) as Record<ControlKind, RowControl>;
 
 const emptyRow = (): LightRow => ({
   id: newId(),
@@ -58,7 +58,7 @@ const emptyRow = (): LightRow => ({
   hoursOn: false, hoursStart: '06:00', hoursEnd: '18:00',
   removedOnly: false,
   newAddition: false,
-  controls: { occupancy: emptyControl(), photocell: emptyControl() },
+  controls: emptyControls(),
 });
 
 const bySort = (a: Row, b: Row) => (a.sort_order ?? 0) - (b.sort_order ?? 0);
@@ -83,10 +83,8 @@ function readArea(store: StoreSnapshot, areaId: string, nextKey: () => string) {
     hoursEnd: r.hours_end || '18:00',
     removedOnly: r.removed_only || false,
     newAddition: r.new_addition || false,
-    controls: {
-      occupancy: toRowControl(controls.find(c => c.light_row_id === r.id && c.kind === 'occupancy')),
-      photocell: toRowControl(controls.find(c => c.light_row_id === r.id && c.kind === 'photocell')),
-    },
+    controls: Object.fromEntries(CONTROL_KINDS.map(k =>
+      [k, toRowControl(controls.find(c => c.light_row_id === r.id && c.kind === k))])) as Record<ControlKind, RowControl>,
   }));
 
   const areaControls: AreaControl[] = controls
@@ -147,14 +145,12 @@ export function useAreaEntry() {
   const typeInfo: Record<string, { mounts: string[]; color: string | null }> = {};
   lightTypeRows.forEach(t => { typeInfo[t.name] = { mounts: t.mount_options || [], color: t.color ?? null }; });
   const controlTypeRows = store.all('control_types').sort(bySort);
-  const controlTypes: Record<ControlKind, string[]> = {
-    occupancy: controlTypeRows.filter(t => t.kind === 'occupancy').map(t => t.name as string),
-    photocell: controlTypeRows.filter(t => t.kind === 'photocell').map(t => t.name as string),
-  };
+  const controlTypes = Object.fromEntries(CONTROL_KINDS.map(k =>
+    [k, controlTypeRows.filter(t => t.kind === k).map(t => t.name as string)])) as Record<ControlKind, string[]>;
 
   // Controls are only shown and saved for the kinds switched on in Job settings.
   // Switching a kind off hides it without deleting anything already entered.
-  const enabledKinds = CONTROL_KINDS.filter(k => (k === 'occupancy' ? job?.col_sensor : job?.col_photocell));
+  const enabledKinds = enabledControlKinds(job);
 
   const codes = productCodes(lightTypeRows);
 
@@ -224,7 +220,7 @@ export function useAreaEntry() {
     setSaving(false);
   }
 
-  // Saves sensors/photocells for the enabled kinds; returns form state with their ids.
+  // Saves sensors/photocells/dimmers for the enabled kinds; returns form state with their ids.
   function saveControls(current: StoreSnapshot) {
     if (enabledKinds.length === 0) return { rows, areaControls };
     const keepIds = new Set<string>();

@@ -5,6 +5,7 @@ import { Colors } from '../../constants/Colors';
 import { LAYOUT_CANVAS_ENABLED } from '../../constants/features';
 import { NotOnDevice } from '../ui/not-on-device';
 import AreaPhotos from '../area-photos/AreaPhotos';
+import { controlsHeading } from '../../lib/controlKinds';
 import { CONTROL_LABEL, ControlKind, LUMEN_OPTIONS, PickerTarget, useAreaEntry } from './useAreaEntry';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses AreaEntryScreen.tsx.
@@ -71,7 +72,7 @@ function WebTypePickerModal({ title, options, detailFor, onSelect, onClose }: We
   );
 }
 
-// Qty + type entry for one sensor/photocell line; used per light row and for area-wide controls.
+// Qty + type entry for one sensor/photocell/dimmer line; used per light row and for area-wide controls.
 function ControlLine({ kind, qty, type, onQty, onPickType, onRemove }: {
   kind: ControlKind;
   qty: string;
@@ -273,7 +274,7 @@ export default function AreaEntryScreen() {
                 </div>
               )}
 
-              {/* Sensors / photocells on this row */}
+              {/* Sensors / photocells / dimmers on this row */}
               {enabledKinds.length > 0 && (
                 <div style={webStyles.rowControls}>
                   {enabledKinds.map(kind => (
@@ -316,7 +317,7 @@ export default function AreaEntryScreen() {
           {enabledKinds.length > 0 && (
             <>
               <div style={webStyles.divider} />
-              <div style={webStyles.sectionLabel}>Area sensors & photocells</div>
+              <div style={webStyles.sectionLabel}>Area {controlsHeading(enabledKinds).toLowerCase()}</div>
               <div style={webStyles.areaControlsHint}>For controls that cover the whole area, not one light row.</div>
               <div style={{ ...webStyles.rowControls, paddingLeft: 0 }}>
                 {visibleAreaControls.map(c => (
@@ -331,10 +332,10 @@ export default function AreaEntryScreen() {
                   />
                 ))}
               </div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                 {enabledKinds.map(kind => (
                   <button key={kind} style={webStyles.addRowBtn} onClick={() => addAreaControl(kind)}>
-                    + Add {CONTROL_LABEL[kind].toLowerCase()}
+                    + Add {CONTROL_LABEL[kind]}
                   </button>
                 ))}
               </div>
@@ -411,7 +412,7 @@ const webStyles: Record<string, CSSProperties> = {
   notesInput: { width: '100%', boxSizing: 'border-box', padding: '10px 12px', fontSize: 13, border: '0.5px solid #e0e7ef', borderRadius: 8, outline: 'none', fontFamily: 'inherit', resize: 'vertical', marginTop: 8 },
   rowControls: { display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 0 4px 68px' },
   controlLine: { display: 'flex', alignItems: 'center', gap: 8 },
-  controlLabel: { width: 70, fontSize: 11, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  controlLabel: { width: 80, fontSize: 11, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' },
   areaControlsHint: { fontSize: 12, color: Colors.textTertiary, marginBottom: 4 },
   mountBtn: { padding: '8px 8px', fontSize: 12, borderWidth: 0.5, borderStyle: 'solid', borderColor: '#e0e7ef', borderRadius: 8, cursor: 'pointer', background: '#fff', whiteSpace: 'nowrap', flexShrink: 0, maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis' },
   mountBtnMissing: { borderColor: '#EF9F27', background: '#FAEEDA', color: '#854F0B' },

@@ -5,13 +5,14 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { CONTROL_PLURAL } from '../../lib/controlKinds';
 import SummaryCard from '../job-summary/SummaryCard';
 import { areaControlsText, generateHTML, rowColor, rowControlsText, sortedRows, tintOf, useScopeExport, withMount } from './useScopeExport';
 
 // Native UI. The web UI lives in ScopeExportScreen.web.tsx; Metro picks the right file per platform.
 
 export default function ScopeExportScreen() {
-  const { jobId, job, areas, loading, kinds, typeColors, codes, legend, fixtures, totalOld, totalNew, totalSensors, totalPhotocells } = useScopeExport();
+  const { jobId, job, areas, loading, kinds, typeColors, codes, legend, fixtures, totalOld, totalNew, controlTotals } = useScopeExport();
   const [generating, setGenerating] = useState(false);
 
   async function exportPDF() {
@@ -66,18 +67,12 @@ export default function ScopeExportScreen() {
 
         {kinds.length > 0 && (
           <View style={styles.statRow}>
-            {kinds.includes('occupancy') && (
-              <View style={styles.statCard}>
-                <Text style={styles.statVal}>{totalSensors}</Text>
-                <Text style={styles.statLabel}>Sensors</Text>
+            {kinds.map(k => (
+              <View key={k} style={styles.statCard}>
+                <Text style={styles.statVal}>{controlTotals[k]}</Text>
+                <Text style={styles.statLabel}>{CONTROL_PLURAL[k]}</Text>
               </View>
-            )}
-            {kinds.includes('photocell') && (
-              <View style={styles.statCard}>
-                <Text style={styles.statVal}>{totalPhotocells}</Text>
-                <Text style={styles.statLabel}>Photocells</Text>
-              </View>
-            )}
+            ))}
           </View>
         )}
 

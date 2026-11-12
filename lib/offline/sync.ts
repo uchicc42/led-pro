@@ -45,7 +45,7 @@ registerCall('removeStorageFile', (bucket: string, path: string) => supabase.sto
 // ---- conflicts: someone else changed the same fields; keep ours, log both ------------------
 
 const TABLE_LABEL: Partial<Record<Table, string>> = {
-  jobs: 'job settings', areas: 'area', light_rows: 'light row', area_controls: 'sensor/photocell',
+  jobs: 'job settings', areas: 'area', light_rows: 'light row', area_controls: 'sensor/photocell/dimmer',
   job_issues: 'issue', install_rows: 'install status',
 };
 

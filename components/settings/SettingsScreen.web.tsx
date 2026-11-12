@@ -7,6 +7,7 @@ import { clearCurrentUser } from '../../constants/userStore';
 import QuickBooksSection from './QuickBooksSection';
 import TeamSection from './TeamSection';
 import { appVersionLabel } from '../../lib/appVersion';
+import { CONTROL_KINDS, CONTROL_LABEL, CONTROL_PLURAL, ControlKind } from '../../lib/controlKinds';
 import { useSettings } from './useSettings';
 
 // Web-only UI built with DOM elements. Metro only bundles this file for web; native uses SettingsScreen.tsx.
@@ -19,7 +20,7 @@ export default function SettingsScreen() {
     notifyJobNotes, setNotifyJobNotes, expandNotifications, setExpandNotifications,
     updateNotificationPref, addLightType, deleteLightType, currentTypes, newTypes,
     expandControls, setExpandControls, newControlName, setNewControlName,
-    newControlKind, setNewControlKind, addControlType, deleteControlType, sensorTypes, photocellTypes,
+    newControlKind, setNewControlKind, addControlType, deleteControlType, typesByKind, controlTypes,
     editingType, setEditingTypeId, newMountOption, setNewMountOption,
     setLightTypeColor, addMountOption, removeMountOption,
     supplierOptions, newSupplier, setNewSupplier, setLightTypeSupplier,
@@ -129,41 +130,35 @@ export default function SettingsScreen() {
           )}
         </div>
 
-        {/* SENSOR & PHOTOCELL TYPES */}
+        {/* SENSOR, PHOTOCELL & DIMMER TYPES */}
         <div style={webStyles.section}>
           <div style={webStyles.sectionHeader} onClick={() => setExpandControls(!expandControls)}>
             <div style={webStyles.sectionHeaderLeft}>
               <div style={webStyles.sectionIcon}>📡</div>
               <div>
-                <div style={webStyles.sectionTitle}>Sensor & photocell types</div>
-                <div style={webStyles.sectionSub}>Dropdown options for occupancy sensors and photocells</div>
+                <div style={webStyles.sectionTitle}>Sensor, photocell & dimmer types</div>
+                <div style={webStyles.sectionSub}>Dropdown options for occupancy sensors, photocells and dimmers</div>
               </div>
             </div>
-            <div style={webStyles.sectionCount}>{sensorTypes.length + photocellTypes.length} types</div>
+            <div style={webStyles.sectionCount}>{controlTypes.length} types</div>
             <div style={webStyles.chevron}>{expandControls ? '▲' : '▼'}</div>
           </div>
 
           {expandControls && (
             <div style={webStyles.expandPanel}>
-              <div style={webStyles.typeGroupLabel}>Occupancy sensors</div>
-              <div style={webStyles.tagWrap}>
-                {sensorTypes.map(t => (
-                  <div key={t.id} style={webStyles.tag}>
-                    {t.name}
-                    <span style={webStyles.tagDel} onClick={() => confirmDelete(t.id, t.name, deleteControlType)}>✕</span>
+              {CONTROL_KINDS.map((kind, k) => (
+                <div key={kind}>
+                  <div style={{ ...webStyles.typeGroupLabel, ...(k > 0 ? { marginTop: 16 } : {}) }}>{CONTROL_PLURAL[kind]}</div>
+                  <div style={webStyles.tagWrap}>
+                    {typesByKind[kind].map(t => (
+                      <div key={t.id} style={webStyles.tag}>
+                        {t.name}
+                        <span style={webStyles.tagDel} onClick={() => confirmDelete(t.id, t.name, deleteControlType)}>✕</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-
-              <div style={{ ...webStyles.typeGroupLabel, marginTop: 16 }}>Photocells</div>
-              <div style={webStyles.tagWrap}>
-                {photocellTypes.map(t => (
-                  <div key={t.id} style={webStyles.tag}>
-                    {t.name}
-                    <span style={webStyles.tagDel} onClick={() => confirmDelete(t.id, t.name, deleteControlType)}>✕</span>
-                  </div>
-                ))}
-              </div>
+                </div>
+              ))}
 
               <div style={webStyles.addTypeRow}>
                 <input
@@ -176,10 +171,9 @@ export default function SettingsScreen() {
                 <select
                   style={webStyles.categorySelect}
                   value={newControlKind}
-                  onChange={e => setNewControlKind(e.target.value as 'occupancy' | 'photocell')}
+                  onChange={e => setNewControlKind(e.target.value as ControlKind)}
                 >
-                  <option value="occupancy">Sensor</option>
-                  <option value="photocell">Photocell</option>
+                  {CONTROL_KINDS.map(k => <option key={k} value={k}>{CONTROL_LABEL[k]}</option>)}
                 </select>
                 <button
                   style={{ ...webStyles.addTypeBtn, opacity: saving ? 0.6 : 1 }}

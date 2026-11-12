@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getCurrentUser } from '../../constants/userStore';
 import { ensureLightTypeColors } from '../../constants/lightTypeColors';
 import { byName } from '../../lib/byName';
+import { CONTROL_KINDS, ControlKind } from '../../lib/controlKinds';
 import { supabase } from '../../supabase';
 
 export function useSettings() {
@@ -21,7 +22,7 @@ export function useSettings() {
   const [controlTypes, setControlTypes] = useState<any[]>([]);
   const [expandControls, setExpandControls] = useState(false);
   const [newControlName, setNewControlName] = useState('');
-  const [newControlKind, setNewControlKind] = useState<'occupancy' | 'photocell'>('occupancy');
+  const [newControlKind, setNewControlKind] = useState<ControlKind>('occupancy');
   // Light type being edited (colour, mount options) in the type editor.
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [newMountOption, setNewMountOption] = useState('');
@@ -161,8 +162,7 @@ export function useSettings() {
 
   const currentTypes = lightTypes.filter(t => t.category === 'current' && !t.archived).sort(byName);
   const newTypes = lightTypes.filter(t => t.category === 'new' && !t.archived).sort(byName);
-  const sensorTypes = controlTypes.filter(t => t.kind === 'occupancy');
-  const photocellTypes = controlTypes.filter(t => t.kind === 'photocell');
+  const typesByKind = Object.fromEntries(CONTROL_KINDS.map(k => [k, controlTypes.filter(t => t.kind === k)])) as Record<ControlKind, any[]>;
 
   return {
     lightTypes, teamMembers, newTypeName, setNewTypeName, newTypeCategory, setNewTypeCategory,
@@ -171,7 +171,7 @@ export function useSettings() {
     notifyJobNotes, setNotifyJobNotes, expandNotifications, setExpandNotifications,
     updateNotificationPref, addLightType, deleteLightType, currentTypes, newTypes,
     controlTypes, expandControls, setExpandControls, newControlName, setNewControlName,
-    newControlKind, setNewControlKind, addControlType, deleteControlType, sensorTypes, photocellTypes,
+    newControlKind, setNewControlKind, addControlType, deleteControlType, typesByKind,
     editingType, setEditingTypeId, newMountOption, setNewMountOption,
     setLightTypeColor, addMountOption, removeMountOption,
     supplierOptions, newSupplier, setNewSupplier, setLightTypeSupplier,
