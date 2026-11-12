@@ -16,12 +16,13 @@ type Props = {
 export default function AreaFormModal({ form, parentOptions, setName, setParent, onSubmit, onClose }: Props) {
   if (!form) return null;
   const duplicating = form.mode === 'duplicate';
+  const moving = form.mode === 'move';
   const ready = !!form.name.trim();
 
   return (
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.box} onClick={e => e.stopPropagation()}>
-        <div style={styles.title}>{duplicating ? 'Duplicate area' : 'New area'}</div>
+        <div style={styles.title}>{moving ? 'Move or rename area' : duplicating ? 'Duplicate area' : 'New area'}</div>
         <input
           autoFocus
           style={styles.input}
@@ -46,6 +47,10 @@ export default function AreaFormModal({ form, parentOptions, setName, setParent,
           </>
         )}
 
+        {moving && parentOptions.length === 0 && (
+          <div style={styles.note}>This area has rooms inside it, so it stays at the top level.</div>
+        )}
+
         {duplicating && (
           <div style={styles.note}>
             Copies the light rows, sensors, photocells and dimmers. Photos, notes, rooms and progress start fresh.
@@ -55,7 +60,7 @@ export default function AreaFormModal({ form, parentOptions, setName, setParent,
         <div style={styles.buttons}>
           <button style={styles.cancel} onClick={onClose}>Cancel</button>
           <button style={{ ...styles.confirm, opacity: ready ? 1 : 0.5 }} onClick={onSubmit} disabled={!ready}>
-            {duplicating ? 'Duplicate' : 'Add'}
+            {moving ? 'Save' : duplicating ? 'Duplicate' : 'Add'}
           </button>
         </div>
       </div>

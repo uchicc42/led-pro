@@ -24,7 +24,7 @@ export default function AreaListScreen() {
   const {
     jobId, job, loading, notOnDevice, filter, setFilter, jobNotes, notesSaved, saveJobNotes, toggleComplete, deleteArea,
     getFilteredGroups, groups, expanded, toggleExpanded, completed, total, progress, openIssues, reordering, setReordering, moveArea,
-    areaForm, parentOptions, openAddArea, openDuplicate, setFormName, setFormParent, closeAreaForm, submitAreaForm,
+    areaForm, parentOptions, openAddArea, openDuplicate, openMove, setFormName, setFormParent, closeAreaForm, submitAreaForm,
   } = useAreaList({ live: 'poll', initialUser: readStoredSession });
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const isElectrician = readStoredSession()?.role === 'electrician';
@@ -108,6 +108,14 @@ export default function AreaListScreen() {
                           ＋ Add room inside
                         </div>
                       )}
+                      <div
+                        style={{ ...webStyles.dropdownItem, color: Colors.blue }}
+                        onClick={() => { openMove(area); setMenuOpen(null); }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#E6F1FB'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+                      >
+                        ↪ Move or rename
+                      </div>
                       <div
                         style={webStyles.dropdownItem}
                         onClick={() => { setMenuOpen(null); confirmDelete(area, rooms.length); }}

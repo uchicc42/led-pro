@@ -15,6 +15,7 @@ type Props = {
 
 export default function AreaFormModal({ form, parentOptions, setName, setParent, onSubmit, onClose }: Props) {
   const duplicating = form?.mode === 'duplicate';
+  const moving = form?.mode === 'move';
   const places = [{ id: null as string | null, name: 'Top level' }, ...parentOptions];
 
   return (
@@ -22,7 +23,7 @@ export default function AreaFormModal({ form, parentOptions, setName, setParent,
       <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Cancel" />
         <View style={styles.box}>
-          <Text style={styles.title}>{duplicating ? 'Duplicate area' : 'New area'}</Text>
+          <Text style={styles.title}>{moving ? 'Move or rename area' : duplicating ? 'Duplicate area' : 'New area'}</Text>
           <TextInput
             style={styles.input}
             placeholder="Name (e.g. Gym, Suite 220, Office A)"
@@ -53,6 +54,10 @@ export default function AreaFormModal({ form, parentOptions, setName, setParent,
             </>
           )}
 
+          {moving && parentOptions.length === 0 && (
+            <Text style={styles.note}>This area has rooms inside it, so it stays at the top level.</Text>
+          )}
+
           {duplicating && (
             <Text style={styles.note}>
               Copies the light rows, sensors, photocells and dimmers. Photos, notes, rooms and progress start fresh.
@@ -61,7 +66,7 @@ export default function AreaFormModal({ form, parentOptions, setName, setParent,
 
           <View style={styles.buttons}>
             <TouchableOpacity style={[styles.confirm, !form?.name.trim() && { opacity: 0.5 }]} onPress={onSubmit} disabled={!form?.name.trim()}>
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>{duplicating ? 'Duplicate' : 'Add'}</Text>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>{moving ? 'Save' : duplicating ? 'Duplicate' : 'Add'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancel} onPress={onClose}>
               <Text style={{ color: Colors.textSecondary, fontSize: 14 }}>Cancel</Text>

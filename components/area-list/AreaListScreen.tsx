@@ -3,6 +3,8 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,15 +26,18 @@ export default function AreaListScreen() {
   const {
     jobId, job, loading, notOnDevice, filter, setFilter, jobNotes, notesSaved, saveJobNotes, toggleComplete, deleteArea,
     getFilteredGroups, groups, expanded, toggleExpanded, completed, total, progress, openIssues, reordering, setReordering, moveArea,
-    areaForm, parentOptions, openAddArea, openDuplicate, setFormName, setFormParent, closeAreaForm, submitAreaForm,
+    areaForm, parentOptions, openAddArea, openDuplicate, openMove, setFormName, setFormParent, closeAreaForm, submitAreaForm,
   } = useAreaList({ live: 'realtime' });
   // The role check reads the web session store, which doesn't exist on native, so this was always false here.
   const isElectrician = false;
   const [dragging, setDragging] = useState(false);
   const filteredGroups = getFilteredGroups();
 
-  function areaMenu(area: any, roomCount: number, isRoom: boolean) {
-    const confirmDelete = () => Alert.alert(
+  // The ··· menu. A small sheet rather than an Alert: Android alerts only fit three buttons.
+  const [menu, setMenu] = useState<{ area: any; roomCount: number; isRoom: boolean } | null>(null);
+
+  function confirmDelete(area: any, roomCount: number) {
+    Alert.alert(
       'Delete area',
       roomCount > 0
         ? `Delete "${area.name}" and the ${roomCount} room${roomCount === 1 ? '' : 's'} inside it? This also removes all their light rows.`
@@ -42,12 +47,14 @@ export default function AreaListScreen() {
         { text: 'Delete', style: 'destructive', onPress: () => deleteArea(area) },
       ]
     );
-    Alert.alert(area.name, 'What would you like to do?', [
-      { text: 'Cancel', style: 'cancel' },
-      ...(!isRoom ? [{ text: '＋ Add room inside', onPress: () => openAddArea(area.id) }] : []),
-      { text: '🗑 Delete area', style: 'destructive' as const, onPress: confirmDelete },
-    ]);
   }
+
+  // Closes the menu, then runs the chosen action. iOS can't open the next box or alert while
+  // the menu is still closing, so it waits for that.
+  const menuAction = (action: () => void) => () => {
+    setMenu(null);
+    setTimeout(action, Platform.OS === 'ios' ? 350 : 0);
+  };
 
   // One area or room on the list.
   function areaCard(area: any, opts: { isRoom: boolean; rooms?: any[]; roomsShown?: boolean }) {
@@ -113,7 +120,7 @@ export default function AreaListScreen() {
           {!isElectrician && (
             <TouchableOpacity
               style={[styles.areaActionBtn, { borderRightWidth: 0 }]}
-              onPress={() => areaMenu(area, rooms.length, opts.isRoom)}
+              onPress={() => setMenu({ area, roomCount: rooms.length, isRoom: opts.isRoom })}
             >
               <Text style={[styles.areaActionBtnText, { color: Colors.textSecondary, fontSize: 16 }]}>···</Text>
             </TouchableOpacity>
@@ -299,6 +306,32 @@ export default function AreaListScreen() {
         </TouchableOpacity>
       )}
 
+      <Modal visible={!!menu} transparent animationType="fade" onRequestClose={() => setMenu(null)}>
+        <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={() => setMenu(null)}>
+          <View style={styles.menuSheet}>
+            <Text style={styles.menuTitle} numberOfLines={1}>{menu?.area.name}</Text>
+            {menu && !menu.isRoom && (
+              <TouchableOpacity style={styles.menuItem} onPress={menuAction(() => openAddArea(menu.area.id))}>
+                <Text style={styles.menuItemText}>＋ Add room inside</Text>
+              </TouchableOpacity>
+            )}
+            {menu && (
+              <TouchableOpacity style={styles.menuItem} onPress={menuAction(() => openMove(menu.area))}>
+                <Text style={styles.menuItemText}>↪ Move or rename</Text>
+              </TouchableOpacity>
+            )}
+            {menu && (
+              <TouchableOpacity style={styles.menuItem} onPress={menuAction(() => confirmDelete(menu.area, menu.roomCount))}>
+                <Text style={[styles.menuItemText, { color: '#A32D2D' }]}>🗑 Delete area</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={() => setMenu(null)}>
+              <Text style={[styles.menuItemText, { color: Colors.textSecondary }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       <AreaFormModal
         form={areaForm}
         parentOptions={parentOptions}
@@ -361,6 +394,11 @@ const styles = StyleSheet.create({
   },
   fabText: { color: '#fff', fontSize: 30, lineHeight: 32, fontWeight: '300' },
   roomCard: { marginLeft: 22 },
+  menuOverlay: { flex: 1, justifyContent: 'center', padding: 32, backgroundColor: 'rgba(0,0,0,0.35)' },
+  menuSheet: { backgroundColor: '#fff', borderRadius: 14, width: '100%', maxWidth: 360, alignSelf: 'center', overflow: 'hidden' },
+  menuTitle: { fontSize: 13, color: Colors.textTertiary, textAlign: 'center', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: Colors.borderLight },
+  menuItem: { paddingVertical: 15, alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.borderLight },
+  menuItemText: { fontSize: 16, color: Colors.blue },
   roomsToggle: { marginLeft: 'auto', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: '#E6F1FB' },
   roomsToggleText: { fontSize: 12, color: '#0C447C', fontWeight: '500' },
   addRoomBtn: { marginLeft: 22, borderWidth: 1, borderColor: '#c0cfe0', borderStyle: 'dashed', borderRadius: 10, padding: 10, alignItems: 'center', marginBottom: 10 },
